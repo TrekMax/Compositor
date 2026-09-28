@@ -6,6 +6,7 @@ final class CompositorUITests: XCTestCase {
     @MainActor
     func testCreateCanvasAndNavigation() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["-appearance.language", "en"]
         app.launch()
         app.buttons["newCanvasWelcome"].click()
         let width = app.textFields["widthInput"]
@@ -39,6 +40,7 @@ final class CompositorUITests: XCTestCase {
     func testLaunchPerformance() throws {
         // Explicit macOS baseline: includes XCTest launch/idle/accessibility overhead.
         let app = XCUIApplication()
+        app.launchArguments = ["-appearance.language", "en"]
         var samples: [Double] = []
         for _ in 0..<5 {
             app.terminate()

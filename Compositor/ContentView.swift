@@ -270,15 +270,15 @@ struct ContentView: View {
             get: { session.importError != nil }, set: { if !$0 { session.importError = nil } })) {
                 // No cancel role: an alert with only a cancel button gets a second OK of its own.
                 Button("OK") { session.importError = nil }
-            } message: { Text(session.importError ?? "") }
+            } message: { Text(L10n.text(session.importError ?? "")) }
         .alert("Couldn’t paint", isPresented: Binding(get: { session.brushError != nil },
             set: { if !$0 { session.brushError = nil } })) {
                 Button("OK") { session.brushError = nil }
-            } message: { Text(session.brushError ?? "") }
+            } message: { Text(L10n.text(session.brushError ?? "")) }
         .alert("Couldn’t crop", isPresented: Binding(get: { session.cropError != nil },
             set: { if !$0 { session.cropError = nil } })) {
                 Button("OK") { session.cropError = nil }
-            } message: { Text(session.cropError ?? "") }
+            } message: { Text(L10n.text(session.cropError ?? "")) }
     }
     private func requestNewCanvas() {
         if let applicationDelegate { Task { await applicationDelegate.projects.newCanvas() } }
@@ -307,7 +307,7 @@ struct ContentView: View {
                         }
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain).help(tool.label).accessibilityLabel(tool.label)
+                .buttonStyle(.plain).help(L10n.text(tool.label)).accessibilityLabel(L10n.text(tool.label))
                 .foregroundStyle(.primary)
                 .accessibilityAddTraits(session.tool == tool ? .isSelected : [])
             }
@@ -339,7 +339,7 @@ struct ContentView: View {
                 ProgressView().controlSize(.mini)
                 Text("Importing images…")
             } else {
-                Text(session.tool == .marquee ? (session.marqueeKind == .ellipse ? "Drag an ellipse · Shift add · Option subtract · Shift again mid-drag circle · Drag inside to move · Delete clears · ⌘D deselect" : "Drag a rectangle · Shift add · Option subtract · Shift again mid-drag square · Drag inside to move · ⌘-drag moves pixels · Delete clears · ⌘D deselect") : session.tool == .wand ? (session.wandMode == .object ? "Click an object to select its outline · Tab for Wand · Shift add · Option subtract · Drag inside to move · ⌘-drag moves pixels · Delete clears · ⌘D deselect" : "Click to select similar colors · Tab for Object · Shift add · Option subtract · Drag inside to move · ⌘-drag moves pixels · Delete clears · ⌘D deselect") : session.tool == .lasso ? (session.lassoKind == .freehand ? "Drag to select · Drag inside to move · Shift add · Option subtract · Delete clears · ⌥⌫/⌘⌫ fill · ⌘D deselect" : "Click corners · Click start, double-click or Enter to close · Delete removes corner · Escape cancel") : session.tool == .brush ? (session.brushMode == .erase ? "Drag to erase" : "Drag to paint") + " · [ ] size · Shift-[ ] hardness · 1–0 opacity · Escape cancel · Space to pan" : session.tool == .blur ? (session.blurMode == .blur ? "Drag to soften" : session.blurMode == .smudge ? "Drag to smudge" : "Drag to push pixels") + " · [ ] size · Shift-[ ] hardness · 1–0 strength · Space to pan" : session.tool == .cloneStamp ? "Option-click to set the source · Drag to clone · [ ] size · Shift-[ ] hardness · 1–0 opacity · Space to pan" : session.tool == .spotHealing ? "Drag over blemishes to heal · [ ] size · Shift-[ ] hardness · Escape cancel · Space to pan" : session.tool == .type ? "Drag a text box · Click text to edit · Drag box handles to resize · ⌘Return finish · Escape cancel" : session.tool == .shape ? "Drag to draw a shape on a new layer · Shift \(session.shapeKind == .line ? "45°" : session.shapeKind == .rectangle ? "square" : "circle") · Option from center · Shift-U or Tab for the next shape · Escape cancel · Space to pan" : session.tool == .gradient ? "Drag to draw · Drag ends to adjust · Shift 45° · 1–0 opacity · Enter apply · Escape cancel" : session.tool == .crop ? "Drag to crop · Enter apply · Escape cancel · Space to pan" : session.tool == .move ? "Drag to move · Handles to resize · Circle to rotate · 1–0 layer opacity · Space to pan" : session.tool == .hand ? "Drag to pan · Pinch to zoom" : session.tool == .idle ? "No tool selected · Press a tool's key to pick one · Space to pan" : "Click to zoom in · Option-click to zoom out · Drag right or left to zoom smoothly · Space to pan")
+                Text(session.tool == .marquee ? (session.marqueeKind == .ellipse ? L10n.text("Drag an ellipse · Shift add · Option subtract · Shift again mid-drag circle · Drag inside to move · Delete clears · ⌘D deselect") : L10n.text("Drag a rectangle · Shift add · Option subtract · Shift again mid-drag square · Drag inside to move · ⌘-drag moves pixels · Delete clears · ⌘D deselect")) : session.tool == .wand ? (session.wandMode == .object ? L10n.text("Click an object to select its outline · Tab for Wand · Shift add · Option subtract · Drag inside to move · ⌘-drag moves pixels · Delete clears · ⌘D deselect") : L10n.text("Click to select similar colors · Tab for Object · Shift add · Option subtract · Drag inside to move · ⌘-drag moves pixels · Delete clears · ⌘D deselect")) : session.tool == .lasso ? (session.lassoKind == .freehand ? L10n.text("Drag to select · Drag inside to move · Shift add · Option subtract · Delete clears · ⌥⌫/⌘⌫ fill · ⌘D deselect") : L10n.text("Click corners · Click start, double-click or Enter to close · Delete removes corner · Escape cancel")) : session.tool == .brush ? (session.brushMode == .erase ? L10n.text("Drag to erase") : L10n.text("Drag to paint")) + L10n.text(" · [ ] size · Shift-[ ] hardness · 1–0 opacity · Escape cancel · Space to pan") : session.tool == .blur ? (session.blurMode == .blur ? L10n.text("Drag to soften") : session.blurMode == .smudge ? L10n.text("Drag to smudge") : L10n.text("Drag to push pixels")) + L10n.text(" · [ ] size · Shift-[ ] hardness · 1–0 strength · Space to pan") : session.tool == .cloneStamp ? L10n.text("Option-click to set the source · Drag to clone · [ ] size · Shift-[ ] hardness · 1–0 opacity · Space to pan") : session.tool == .spotHealing ? L10n.text("Drag over blemishes to heal · [ ] size · Shift-[ ] hardness · Escape cancel · Space to pan") : session.tool == .type ? L10n.text("Drag a text box · Click text to edit · Drag box handles to resize · ⌘Return finish · Escape cancel") : session.tool == .shape ? L10n.format("Drag to draw a shape on a new layer · Shift %@ · Option from center · Shift-U or Tab for the next shape · Escape cancel · Space to pan", L10n.text(session.shapeKind == .line ? "45°" : session.shapeKind == .rectangle ? "square" : "circle")) : session.tool == .gradient ? L10n.text("Drag to draw · Drag ends to adjust · Shift 45° · 1–0 opacity · Enter apply · Escape cancel") : session.tool == .crop ? L10n.text("Drag to crop · Enter apply · Escape cancel · Space to pan") : session.tool == .move ? L10n.text("Drag to move · Handles to resize · Circle to rotate · 1–0 layer opacity · Space to pan") : session.tool == .hand ? L10n.text("Drag to pan · Pinch to zoom") : session.tool == .idle ? L10n.text("No tool selected · Press a tool's key to pick one · Space to pan") : L10n.text("Click to zoom in · Option-click to zoom out · Drag right or left to zoom smoothly · Space to pan"))
             }
         }
         .font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary)
@@ -373,7 +373,7 @@ private struct PanelResizeEdge: View {
 extension View {
     /// Bordered buttons and pop-up menus drawn as capsules throughout the app. Borderless and plain buttons (the tool
     /// rail, the Layers panel footer) have no border to shape, so they're unaffected.
-    func roundedControls() -> some View { buttonBorderShape(.capsule) }
+    func roundedControls() -> some View { buttonBorderShape(.capsule).applicationLanguage() }
 }
 
 extension View {

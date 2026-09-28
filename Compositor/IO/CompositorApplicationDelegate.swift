@@ -3,8 +3,11 @@ import Sparkle
 
 final class CompositorApplicationDelegate: NSObject, NSApplicationDelegate {
     let workspace = ProjectWorkspace()
+    private let menuLocalization = NativeMenuLocalization()
+    private var updaterStarted = false
     var session: EditorSession { workspace.current.session }
     var projects: ProjectController { workspace.current.controller }
+    private var pendingLanguageURLs: [URL] = []
     var showEditor: (() -> Void)?
     /// Checks the update feed and installs new versions (Sparkle). Started only after launch: its first-run prompt,
     /// shown during launch, kept the editor window from ever opening.
@@ -21,7 +24,24 @@ final class CompositorApplicationDelegate: NSObject, NSApplicationDelegate {
             else { DispatchQueue.main.async { Self.reopen() } }
         }
         application.activate()
+        guard !LanguageSettings.shared.needsInitialSelection else {
+            pendingLanguageURLs.append(contentsOf: urls)
+            return
+        }
         Task { await workspace.receive(urls) }
+    }
+
+    func finishLanguageSelection() {
+        let urls = pendingLanguageURLs
+        pendingLanguageURLs.removeAll()
+        if !urls.isEmpty { Task { await workspace.receive(urls) } }
+        startUpdaterIfReady()
+    }
+
+    private func startUpdaterIfReady() {
+        guard !updaterStarted, !LanguageSettings.shared.needsInitialSelection else { return }
+        updaterStarted = true
+        updater.startUpdater()
     }
 
     private static func reopen() {
@@ -39,7 +59,8 @@ final class CompositorApplicationDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [updater] in updater.startUpdater() }
+        menuLocalization.install()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.startUpdaterIfReady() }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

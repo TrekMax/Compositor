@@ -41,7 +41,7 @@ struct LanguageSelectionSheet: View {
             }
             .pickerStyle(.radioGroup)
             .accessibilityIdentifier("initialLanguagePicker")
-            Text("You can change this later from the Language menu.")
+            Text("You can change this later in Compositor Settings.")
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
@@ -58,24 +58,5 @@ struct LanguageSelectionSheet: View {
         .frame(width: 420)
         .environment(\.locale, Locale(identifier: choice.resolvedIdentifier()))
         .interactiveDismissDisabled()
-    }
-}
-
-struct LanguageCommands: Commands {
-    var body: some Commands {
-        CommandMenu("Language / 语言") {
-            ForEach(AppLanguage.allCases) { language in
-                Toggle(isOn: Binding(get: { LanguageSettings.shared.selection == language }, set: { selected in
-                    if selected { LanguageSettings.shared.select(language) }
-                })) {
-                    switch language {
-                    case .system: Text(verbatim: "Follow System / 跟随系统")
-                    case .english: Text(verbatim: "English")
-                    case .simplifiedChinese: Text(verbatim: "简体中文")
-                    }
-                }
-                .disabled(LanguageSettings.shared.needsInitialSelection)
-            }
-        }
     }
 }

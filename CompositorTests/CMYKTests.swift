@@ -102,7 +102,7 @@ struct CMYKTests {
     /// it is; the profile comes with them.
     @Test func layeredCMYKPhotoshopFilesOpen() throws {
         let document = try PSDReader.read(try layeredCMYK())
-        #expect(document.cmykProfile?.name == "Generic CMYK Profile")
+        #expect(document.cmykProfile?.data == (try profile()).data)
         #expect(document.layers.map(\.name) == ["Red", "Gray"])
         let printedRed = try pixel(try CMYK.convert(try swatch(CGColor(srgbRed: 1, green: 0, blue: 0, alpha: 1)), to: try profile(),
                                                     over: CGColor(gray: 1, alpha: 1)))

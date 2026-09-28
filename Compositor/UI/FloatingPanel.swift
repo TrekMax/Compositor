@@ -20,6 +20,7 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
     private let name: String
     var onClose: (() -> Void)?
     private var panel: NSPanel?
+    private var titleKey = ""
     private var dismissing = false
     private var placement: FloatingPanelPlacement = .automatic
     private var frameObservers: [NSObjectProtocol] = []
@@ -30,14 +31,20 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
     init(name: String) {
         self.name = name
         identifier = NSUserInterfaceItemIdentifier(name)
+        super.init()
+        NotificationCenter.default.addObserver(self, selector: #selector(updateLanguage),
+                                               name: .applicationLanguageDidChange, object: nil)
     }
+
+    @objc private func updateLanguage() { panel?.title = L10n.text(titleKey) }
 
     func show(title: String, content: some View, placement: FloatingPanelPlacement = .automatic) {
         self.placement = placement
         let panel = self.panel ?? makePanel()
         let wasVisible = panel.isVisible
         let topLeft = NSPoint(x: panel.frame.minX, y: panel.frame.maxY)
-        panel.title = title
+        titleKey = title
+        panel.title = L10n.text(title)
         // A hosting *view* sized once, not a controller with `.preferredContentSize`:
         // that option makes AppKit measure the SwiftUI view during its constraint pass,
         // and SwiftUI's measurement invalidates layout re-entrantly, which AppKit treats

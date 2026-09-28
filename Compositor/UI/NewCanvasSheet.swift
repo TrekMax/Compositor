@@ -101,7 +101,7 @@ struct NewCanvasSheet: View {
                             Text("Custom").tag(CanvasPreset?.none)
                             ForEach(CanvasPreset.groups.indices, id: \.self) { group in
                                 Divider()
-                                ForEach(CanvasPreset.groups[group]) { Text($0.title).tag(CanvasPreset?.some($0)) }
+                                ForEach(CanvasPreset.groups[group]) { Text(L10n.text($0.title)).tag(CanvasPreset?.some($0)) }
                             }
                         }
                         .pickerStyle(.inline).labelsHidden()
@@ -147,8 +147,8 @@ struct NewCanvasSheet: View {
             }
             .font(.callout).foregroundStyle(.secondary)
             if !valid {
-                Text(unit == .pixels ? "Enter whole numbers from 1 to \(DocumentLimits.maxSide.formatted()) pixels."
-                                     : "Enter a size up to \(DocumentLimits.maxSide.formatted()) pixels at this DPI.")
+                Text(L10n.format(unit == .pixels ? "Enter whole numbers from 1 to %@ pixels."
+                                     : "Enter a size up to %@ pixels at this DPI.", DocumentLimits.maxSide.formatted()))
                     .font(.callout).foregroundStyle(.orange)
             }
             HStack(spacing: 10) {
@@ -202,7 +202,7 @@ struct NewCanvasSheet: View {
     }
     private func dimension(_ title: String, text: Binding<String>, field: Field) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.callout.weight(.medium))
+            Text(L10n.text(title)).font(.callout.weight(.medium))
             HStack {
                 TextField(title, text: text).textFieldStyle(.plain)
                     .focused($focusedField, equals: field)

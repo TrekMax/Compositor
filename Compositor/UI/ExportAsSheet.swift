@@ -179,7 +179,7 @@ struct ExportAsSheet: View {
                      : format == .png || format == .tiff ? "Transparency kept · sRGB" : "sRGB")
                     .foregroundStyle(.secondary)
                 Spacer()
-                if let error { Text(error).foregroundStyle(.red) }
+                if let error { Text(L10n.text(error)).foregroundStyle(.red) }
                 else if isReady, let result {
                     Text(ByteCountFormatter.string(fromByteCount: Int64(result.data.count), countStyle: .file)).monospacedDigit()
                 } else { Text("Updating…").foregroundStyle(.secondary) }

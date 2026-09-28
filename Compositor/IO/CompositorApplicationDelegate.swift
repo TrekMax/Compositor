@@ -3,8 +3,11 @@ import Sparkle
 
 final class CompositorApplicationDelegate: NSObject, NSApplicationDelegate {
     let workspace = ProjectWorkspace()
+    private let menuLocalization = NativeMenuLocalization()
+    private var updaterStarted = false
     var session: EditorSession { workspace.current.session }
     var projects: ProjectController { workspace.current.controller }
+    private var pendingLanguageURLs: [URL] = []
     var showEditor: (() -> Void)?
     /// Checks the update feed and installs new versions (Sparkle), offering each one with what's new listed in it.
     /// Started only after launch: its first-run prompt, shown during launch, kept the editor window from ever opening.
@@ -27,7 +30,28 @@ final class CompositorApplicationDelegate: NSObject, NSApplicationDelegate {
             else { DispatchQueue.main.async { Self.reopen() } }
         }
         application.activate()
+        guard !LanguageSettings.shared.needsInitialSelection else {
+            pendingLanguageURLs.append(contentsOf: urls)
+            return
+        }
         Task { await workspace.receive(urls) }
+    }
+
+    func finishLanguageSelection() {
+        let urls = pendingLanguageURLs
+        pendingLanguageURLs.removeAll()
+        if !urls.isEmpty { Task { await workspace.receive(urls) } }
+        startUpdaterIfReady()
+    }
+
+    private func startUpdaterIfReady() {
+        guard !updaterStarted, !LanguageSettings.shared.needsInitialSelection else { return }
+        updaterStarted = true
+        do { try updater.start() } catch { NSLog("Sparkle didn't start: \(error)") }
+        #if DEBUG
+        // Trying an update against a local feed: check straight away.
+        if UserDefaults.standard.string(forKey: "UpdateFeedURL") != nil { updater.checkForUpdates() }
+        #endif
     }
 
     private static func reopen() {
@@ -47,6 +71,7 @@ final class CompositorApplicationDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        menuLocalization.install()
         // macOS adds Writing Tools, AutoFill, Start Dictation and Emoji & Symbols to the Edit menu; they're for typing
         // text, not editing images, and only got in the way. It adds Enter Full Screen (Globe-F) to the View menu,
         // beside Canvas Only (F), which does the same job without the slow slide into a new space. Taken out once the menus exist, and again whenever the
@@ -81,11 +106,7 @@ final class CompositorApplicationDelegate: NSObject, NSApplicationDelegate {
             MainActor.assumeIsolated { Self.removeIfSystemExtra(at: index, in: menu) }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
-            do { try self?.updater.start() } catch { NSLog("Sparkle didn't start: \(error)") }
-            #if DEBUG
-            // Trying an update against a local feed: check straight away.
-            if UserDefaults.standard.string(forKey: "UpdateFeedURL") != nil { self?.updater.checkForUpdates() }
-            #endif
+            self?.startUpdaterIfReady()
         }
     }
 

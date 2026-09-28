@@ -506,6 +506,7 @@
 "Keyboard Shortcuts" = "Keyboard Shortcuts";
 "Keyboard Shortcuts…" = "Keyboard Shortcuts…";
 "Language" = "Language";
+"Language changes take effect immediately and are saved automatically." = "Language changes take effect immediately and are saved automatically.";
 "Lasso" = "Lasso";
 "Lasso (L)" = "Lasso (L)";
 "Lasso / cycle mode" = "Lasso / cycle mode";
@@ -825,6 +826,8 @@
 "Sets the brightest point. Hold Option to see clipped highlights." = "Sets the brightest point. Hold Option to see clipped highlights.";
 "Sets the darkest point. Hold Option to see clipped shadows." = "Sets the darkest point. Hold Option to see clipped shadows.";
 "Sets where the vignette begins, from the center outward." = "Sets where the vignette begins, from the center outward.";
+"Settings" = "Settings";
+"Settings…" = "Settings…";
 "Shade" = "Shade";
 "Shadow Clipping Indicator" = "Shadow Clipping Indicator";
 "Shadows" = "Shadows";
@@ -1004,7 +1007,7 @@
 "Working…" = "Working…";
 "Yellow / Blue" = "Yellow / Blue";
 "Yellows" = "Yellows";
-"You can change this later from the Language menu." = "You can change this later from the Language menu.";
+"You can change this later in Compositor Settings." = "You can change this later in Compositor Settings.";
 "YouTube Thumb" = "YouTube Thumb";
 "Your changes will be lost if you don’t save them." = "Your changes will be lost if you don’t save them.";
 "Zoom" = "Zoom";

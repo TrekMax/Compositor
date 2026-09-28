@@ -345,6 +345,8 @@ struct CompositorApp: App {
         Settings {
             ApplicationSettingsView().applicationLanguage()
         }
+        .defaultSize(width: 760, height: 480)
+        .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(replacing: .appSettings) {
                 SettingsLink { Text(verbatim: L10n.text("Settings…")) }

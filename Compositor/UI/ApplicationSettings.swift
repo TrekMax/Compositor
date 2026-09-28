@@ -1,6 +1,51 @@
 import SwiftUI
 
+private enum SettingsCategory: String, CaseIterable, Identifiable {
+    case general
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .general: "General"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .general: "gearshape"
+        }
+    }
+}
+
 struct ApplicationSettingsView: View {
+    @State private var selectedCategory: SettingsCategory? = .general
+
+    var body: some View {
+        NavigationSplitView(columnVisibility: .constant(.all)) {
+            List(SettingsCategory.allCases, selection: $selectedCategory) { category in
+                Label(L10n.text(category.title), systemImage: category.systemImage)
+                    .tag(category)
+            }
+            .listStyle(.sidebar)
+            .navigationTitle(L10n.text("Settings"))
+            .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
+            .accessibilityIdentifier("settingsSidebar")
+            .toolbar(removing: .sidebarToggle)
+        } detail: {
+            Group {
+                switch selectedCategory ?? .general {
+                case .general: GeneralSettingsView()
+                }
+            }
+            .navigationTitle(L10n.text((selectedCategory ?? .general).title))
+        }
+        .navigationSplitViewStyle(.balanced)
+        .frame(minWidth: 680, minHeight: 420)
+    }
+}
+
+private struct GeneralSettingsView: View {
     var body: some View {
         Form {
             Section {
@@ -18,7 +63,5 @@ struct ApplicationSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 440, height: 150)
-        .navigationTitle(L10n.text("Settings"))
     }
 }

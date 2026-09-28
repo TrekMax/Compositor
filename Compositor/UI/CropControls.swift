@@ -16,7 +16,7 @@ struct CropControls: View {
                 // Grouped by shape: free and the canvas's own proportions, square, wide, tall.
                 ForEach(ratioGroups.indices, id: \.self) { index in
                     if index > 0 { Divider() }
-                    ForEach(ratioGroups[index], id: \.self) { Text($0) }
+                    ForEach(ratioGroups[index], id: \.self) { Text(L10n.text($0)) }
                 }
                 if !ratios.contains(session.cropRatioChoice) {
                     Text(session.cropRatioChoice).tag(session.cropRatioChoice)

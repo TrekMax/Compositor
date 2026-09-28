@@ -28,7 +28,7 @@ struct LayersPanel: View {
                 }
             } else {
                 LayersUnavailableView("No layers yet", systemImage: "square.3.layers.3d") {
-                    Text(session.document == nil ? "Create a canvas or import a file." : "Import a file or add a blank layer.")
+                    Text(L10n.text(session.document == nil ? "Create a canvas or import a file." : "Import a file or add a blank layer."))
                 }
             }
             Divider()

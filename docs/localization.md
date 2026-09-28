@@ -1,6 +1,6 @@
 # Interface languages
 
-Compositor supports English and Simplified Chinese. On first launch, choose a language or **Follow System**. The **Language / 语言** menu changes the interface immediately and remembers the choice for future launches.
+Compositor supports English and Simplified Chinese. On first launch, choose a language or **Follow System**. Open **Compositor → Settings…** (Command-comma) to change the interface language. Changes apply immediately and are remembered for future launches.
 
 The preference lives in `UserDefaults` under `appearance.language` (`system`, `en`, or `zh-Hans`). A missing or invalid value requests a choice again. System mode matches the Mac's preferred languages against the supported languages, with English as the fallback. It does not modify macOS's `AppleLanguages` preference.
 

@@ -506,6 +506,7 @@
 "Keyboard Shortcuts" = "键盘快捷键";
 "Keyboard Shortcuts…" = "键盘快捷键…";
 "Language" = "语言";
+"Language changes take effect immediately and are saved automatically." = "语言更改立即生效并自动保存。";
 "Lasso" = "套索";
 "Lasso (L)" = "套索（L）";
 "Lasso / cycle mode" = "套索 / 切换模式";
@@ -825,6 +826,8 @@
 "Sets the brightest point. Hold Option to see clipped highlights." = "设置最亮点。按住 Option 查看高光溢出。";
 "Sets the darkest point. Hold Option to see clipped shadows." = "设置最暗点。按住 Option 查看阴影溢出。";
 "Sets where the vignette begins, from the center outward." = "设置从中心向外暗角开始的位置。";
+"Settings" = "设置";
+"Settings…" = "设置…";
 "Shade" = "阴影";
 "Shadow Clipping Indicator" = "阴影溢出指示器";
 "Shadows" = "阴影";
@@ -1004,7 +1007,7 @@
 "Working…" = "处理中…";
 "Yellow / Blue" = "黄色 / 蓝色";
 "Yellows" = "黄色";
-"You can change this later from the Language menu." = "之后可从菜单栏的“语言”菜单更改。";
+"You can change this later in Compositor Settings." = "之后可在 Compositor 的设置中更改语言。";
 "YouTube Thumb" = "YouTube 缩略图";
 "Your changes will be lost if you don’t save them." = "如果不保存，更改将会丢失。";
 "Zoom" = "缩放";

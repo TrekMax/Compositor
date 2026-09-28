@@ -22,7 +22,6 @@ struct CompositorApp: App {
             // The project's name is already on its tab, so the toolbar doesn't repeat it as a window title.
             .windowToolbarStyle(.unifiedCompact(showsTitle: false))
             .commands {
-                LanguageCommands()
                 CommandGroup(replacing: .undoRedo) {
                     // Dialog text fields keep native text undo; document history
                     // is unavailable while an import or modal edit is active.
@@ -343,5 +342,14 @@ struct CompositorApp: App {
                         .disabled(!session.canEditLayers || session.activeLayer == nil)
                 }
             }
+        Settings {
+            ApplicationSettingsView().applicationLanguage()
+        }
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                SettingsLink { Text(verbatim: L10n.text("Settings…")) }
+                    .keyboardShortcut(",", modifiers: .command)
+            }
+        }
     }
 }

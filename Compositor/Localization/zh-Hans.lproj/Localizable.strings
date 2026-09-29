@@ -1035,3 +1035,9 @@
 "Select layer mask; Option-click to view it alone; Shift-click to enable/disable; Cmd-click to select its black areas (Cmd-Shift adds, Cmd-Option subtracts)" = "选择图层蒙版；按住 Option 点击可单独查看；按住 Shift 点击可启用或禁用；按住 Cmd 点击可选择黑色区域（Cmd-Shift 添加，Cmd-Option 减去）";
 "Drag up or down to lift or lower those tones. Drag a divider along the bottom to change which tones each region covers." = "上下拖动可提亮或压暗这些色调。沿底部拖动分隔线可调整各区域涵盖的色调范围。";
 "Drag a point. Click to add one. Double-click a point to remove it." = "拖动控制点。单击可添加控制点，双击控制点可将其移除。";
+"Tool Tips" = "工具提示";
+"Show tool names on hover" = "悬停时显示工具名称";
+"Show after" = "显示延迟";
+"Tool tip delay" = "工具提示延迟";
+"%.1f seconds" = "%.1f 秒";
+"Tool names appear beside the left toolbar. Changes are saved automatically." = "工具名称显示在左侧工具栏旁。更改会自动保存。";

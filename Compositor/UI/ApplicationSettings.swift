@@ -61,6 +61,29 @@ private struct GeneralSettingsView: View {
             } footer: {
                 Text("Language changes take effect immediately and are saved automatically.")
             }
+            Section {
+                Toggle("Show tool names on hover", isOn: Binding(
+                    get: { ToolTipSettings.shared.isEnabled },
+                    set: { ToolTipSettings.shared.setEnabled($0) }
+                ))
+                .accessibilityIdentifier("settingsToolTipsEnabled")
+                LabeledContent("Show after") {
+                    Slider(value: Binding(
+                        get: { ToolTipSettings.shared.delay },
+                        set: { ToolTipSettings.shared.setDelay($0) }
+                    ), in: 0...3, step: 0.1)
+                    .accessibilityLabel("Tool tip delay")
+                    .accessibilityIdentifier("settingsToolTipDelay")
+                    Text(L10n.format("%.1f seconds", ToolTipSettings.shared.delay))
+                        .monospacedDigit()
+                        .frame(minWidth: 80, alignment: .trailing)
+                }
+                .disabled(!ToolTipSettings.shared.isEnabled)
+            } header: {
+                Text("Tool Tips")
+            } footer: {
+                Text("Tool names appear beside the left toolbar. Changes are saved automatically.")
+            }
         }
         .formStyle(.grouped)
     }

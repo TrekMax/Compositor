@@ -1035,3 +1035,9 @@
 "Select layer mask; Option-click to view it alone; Shift-click to enable/disable; Cmd-click to select its black areas (Cmd-Shift adds, Cmd-Option subtracts)" = "Select layer mask; Option-click to view it alone; Shift-click to enable/disable; Cmd-click to select its black areas (Cmd-Shift adds, Cmd-Option subtracts)";
 "Drag up or down to lift or lower those tones. Drag a divider along the bottom to change which tones each region covers." = "Drag up or down to lift or lower those tones. Drag a divider along the bottom to change which tones each region covers.";
 "Drag a point. Click to add one. Double-click a point to remove it." = "Drag a point. Click to add one. Double-click a point to remove it.";
+"Tool Tips" = "Tool Tips";
+"Show tool names on hover" = "Show tool names on hover";
+"Show after" = "Show after";
+"Tool tip delay" = "Tool tip delay";
+"%.1f seconds" = "%.1f seconds";
+"Tool names appear beside the left toolbar. Changes are saved automatically." = "Tool names appear beside the left toolbar. Changes are saved automatically.";

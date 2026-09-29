@@ -307,7 +307,7 @@ struct ContentView: View {
                         }
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain).help(L10n.text(tool.label)).accessibilityLabel(L10n.text(tool.label))
+                .buttonStyle(.plain).toolTip(tool.label).accessibilityLabel(L10n.text(tool.label))
                 .foregroundStyle(.primary)
                 .accessibilityAddTraits(session.tool == tool ? .isSelected : [])
             }

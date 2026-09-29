@@ -1041,3 +1041,9 @@
 "Toggle Fullscreen" = "切换全屏";
 "Navigator (300% and above)" = "导航器（300% 及以上）";
 "Enter a size up to %@ pixels at this DPI." = "输入在此 DPI 下不超过 %@ 像素的尺寸。";
+"Tool Tips" = "工具提示";
+"Show tool names on hover" = "悬停时显示工具名称";
+"Show after" = "显示延迟";
+"Tool tip delay" = "工具提示延迟";
+"%.1f seconds" = "%.1f 秒";
+"Tool names appear beside the left toolbar. Changes are saved automatically." = "工具名称显示在左侧工具栏旁。更改会自动保存。";

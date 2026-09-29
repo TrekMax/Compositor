@@ -1041,3 +1041,9 @@
 "Toggle Fullscreen" = "Toggle Fullscreen";
 "Navigator (300% and above)" = "Navigator (300% and above)";
 "Enter a size up to %@ pixels at this DPI." = "Enter a size up to %@ pixels at this DPI.";
+"Tool Tips" = "Tool Tips";
+"Show tool names on hover" = "Show tool names on hover";
+"Show after" = "Show after";
+"Tool tip delay" = "Tool tip delay";
+"%.1f seconds" = "%.1f seconds";
+"Tool names appear beside the left toolbar. Changes are saved automatically." = "Tool names appear beside the left toolbar. Changes are saved automatically.";

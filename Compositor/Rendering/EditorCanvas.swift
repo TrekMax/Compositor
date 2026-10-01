@@ -1841,6 +1841,9 @@ final class CanvasView: NSView {
         } else if session.tool.isSelectionTool {
             lassoMouseDown(at: point, event: event)
             refreshLassoCursor()
+        } else if session.tool == .paintBucket, let document = session.document {
+            let pixel = session.viewport.documentPoint(from: point, documentSize: document.size)
+            Task { await session.paintBucket(at: pixel); synchronizeDisplay() }
         } else if session.tool == .gradient {
             beginGradientDrag(at: point)
         } else if session.tool == .type {
@@ -2292,7 +2295,7 @@ final class CanvasView: NSView {
             case "j": session.selectTool(.spotHealing)
             case "s": session.selectTool(.cloneStamp)
             case "t": session.selectTool(.type)
-            case "g": session.selectTool(.gradient)
+            case "g": session.selectTool(event.modifierFlags.contains(.shift) ? .paintBucket : .gradient)
             case "u":
                 if event.modifierFlags.contains(.shift), session.tool == .shape { session.toggleShapeKind() }
                 else { session.selectTool(.shape) }

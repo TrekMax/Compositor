@@ -721,9 +721,15 @@ final class BrushStroke {
         }
     }
 
-    /// Fills the selection (or the whole canvas) with a solid color.
-    func fill(_ color: CGColor) throws {
-        try paintCanvas { context in
+    /// Fills the selection (or the whole canvas) with a solid color, optionally limited to a matched region.
+    func fill(_ color: CGColor, in region: CGPath? = nil, opacity: CGFloat = 1) throws {
+        try paintCanvas(region: region?.boundingBoxOfPath) { context in
+            if let region {
+                context.setShouldAntialias(false)
+                context.addPath(region)
+                context.clip()
+            }
+            context.setAlpha(min(1, max(0, opacity)))
             context.setFillColor(color)
             context.fill(self.canvas)
         }
@@ -741,9 +747,9 @@ final class BrushStroke {
     /// Runs `draw` in document coordinates over every tile the canvas and selection
     /// cover (only the layer's existing pixels with `withinSource`), clipped to both,
     /// starting from each tile's original content.
-    private func paintCanvas(withinSource: Bool = false, _ draw: @escaping (CGContext) throws -> Void) throws {
+    private func paintCanvas(withinSource: Bool = false, region: CGRect? = nil, _ draw: @escaping (CGContext) throws -> Void) throws {
         canvasPaint = (draw, withinSource)
-        var area = canvas
+        var area = region.map { canvas.intersection($0) } ?? canvas
         if let selectionClip { area = area.intersection(selectionClip.rect) }
         guard !area.isNull, !area.isEmpty else { return }
         let inverse = pixelToDocument.inverted()

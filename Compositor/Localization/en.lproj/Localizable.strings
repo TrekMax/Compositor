@@ -1035,3 +1035,9 @@
 "Select layer mask; Option-click to view it alone; Shift-click to enable/disable; Cmd-click to select its black areas (Cmd-Shift adds, Cmd-Option subtracts)" = "Select layer mask; Option-click to view it alone; Shift-click to enable/disable; Cmd-click to select its black areas (Cmd-Shift adds, Cmd-Option subtracts)";
 "Drag up or down to lift or lower those tones. Drag a divider along the bottom to change which tones each region covers." = "Drag up or down to lift or lower those tones. Drag a divider along the bottom to change which tones each region covers.";
 "Drag a point. Click to add one. Double-click a point to remove it." = "Drag a point. Click to add one. Double-click a point to remove it.";
+"Paint Bucket" = "Paint Bucket";
+"Paint Bucket (⇧G)" = "Paint Bucket (⇧G)";
+"Paint Bucket tool" = "Paint Bucket tool";
+"How far each color channel may differ from the clicked color (0–255)" = "How far each color channel may differ from the clicked color (0–255)";
+"Fill connected matching pixels; turn off to fill matching colors everywhere" = "Fill connected matching pixels; turn off to fill matching colors everywhere";
+"Click to fill with the foreground color · 1–0 opacity · Space to pan" = "Click to fill with the foreground color · 1–0 opacity · Space to pan";

@@ -110,7 +110,7 @@ struct ShortcutDefinition: Identifiable {
         }
         result += [entry("Decrease brush hardness", "[", 8), entry("Increase brush hardness", "]", 8),
                    entry("Previous blend mode", "-", 8), entry("Next blend mode", "=", 8),
-                   entry("Cycle shape kind", "u", 8)]
+                   entry("Cycle shape kind", "u", 8), entry("Paint Bucket tool", "g", 8)]
         for digit in 0...9 { result.append(entry("Opacity digit \(digit) (type two for exact %)", String(digit))) }
         for (direction, key) in [("Left", "\u{f702}"), ("Right", "\u{f703}"), ("Up", "\u{f700}"), ("Down", "\u{f701}")] {
             result += [entry("Nudge \(direction) 1 px", key), entry("Nudge \(direction) 10 px", key, 8),
@@ -132,11 +132,28 @@ final class ShortcutSettings {
     static let shared = ShortcutSettings()
     private(set) var overrides: [String: ShortcutChord] = [:]
     @ObservationIgnored private let panel = FloatingPanelController(name: "keyboardShortcuts")
+    @ObservationIgnored private let defaults: UserDefaults
     private static let storageKey = "keyboardShortcuts.v1"
-    private init() {
-        if let data = UserDefaults.standard.data(forKey: Self.storageKey),
-           let saved = try? JSONDecoder().decode([String: ShortcutChord].self, from: data),
-           Self.problem(in: saved) == nil { overrides = saved }
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        if let data = defaults.data(forKey: Self.storageKey),
+           let saved = try? JSONDecoder().decode([String: ShortcutChord].self, from: data) {
+            let restored = Self.preservingAssignmentsBeforePaintBucket(saved)
+            if Self.problem(in: restored) == nil { overrides = restored }
+        }
+    }
+    /// Shift-G was available for customization before Paint Bucket existed. Keep those assignments
+    /// and give the new tool an unused chord instead of rejecting the user's entire configuration.
+    private static func preservingAssignmentsBeforePaintBucket(_ saved: [String: ShortcutChord]) -> [String: ShortcutChord] {
+        guard let bucket = ShortcutDefinition.all.first(where: { $0.id == "Canvas & Layers:Paint Bucket tool" }),
+              saved[bucket.id] == nil, saved.values.contains(bucket.original) else { return saved }
+        let others = ShortcutDefinition.all.filter { $0.id != bucket.id }
+        let used = Set(others.map { saved[$0.id] ?? $0.original })
+        let candidates = [ShortcutChord("g", 10)] + others.map(\.original)
+        guard let fallback = candidates.first(where: { !used.contains($0) }) else { return saved }
+        var restored = saved
+        restored[bucket.id] = fallback
+        return restored
     }
     func chord(_ definition: ShortcutDefinition) -> ShortcutChord { overrides[definition.id] ?? definition.original }
     func menu(_ key: KeyEquivalent, modifiers: EventModifiers) -> ShortcutChord {
@@ -160,7 +177,7 @@ final class ShortcutSettings {
     func save(_ values: [String: ShortcutChord]) {
         guard Self.problem(in: values) == nil, let data = try? JSONEncoder().encode(values) else { return }
         overrides = values
-        UserDefaults.standard.set(data, forKey: Self.storageKey)
+        defaults.set(data, forKey: Self.storageKey)
         close()
     }
     static func problem(in values: [String: ShortcutChord]) -> String? {

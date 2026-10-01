@@ -1035,3 +1035,9 @@
 "Select layer mask; Option-click to view it alone; Shift-click to enable/disable; Cmd-click to select its black areas (Cmd-Shift adds, Cmd-Option subtracts)" = "选择图层蒙版；按住 Option 点击可单独查看；按住 Shift 点击可启用或禁用；按住 Cmd 点击可选择黑色区域（Cmd-Shift 添加，Cmd-Option 减去）";
 "Drag up or down to lift or lower those tones. Drag a divider along the bottom to change which tones each region covers." = "上下拖动可提亮或压暗这些色调。沿底部拖动分隔线可调整各区域涵盖的色调范围。";
 "Drag a point. Click to add one. Double-click a point to remove it." = "拖动控制点。单击可添加控制点，双击控制点可将其移除。";
+"Paint Bucket" = "油漆桶";
+"Paint Bucket (⇧G)" = "油漆桶（⇧G）";
+"Paint Bucket tool" = "油漆桶工具";
+"How far each color channel may differ from the clicked color (0–255)" = "各颜色通道与点击颜色的最大允许差值（0–255）";
+"Fill connected matching pixels; turn off to fill matching colors everywhere" = "填充相连的相近颜色像素；关闭后填充所有相近颜色区域";
+"Click to fill with the foreground color · 1–0 opacity · Space to pan" = "点击以前景色填充 · 1–0 不透明度 · 空格平移";

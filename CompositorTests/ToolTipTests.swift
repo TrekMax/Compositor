@@ -42,7 +42,11 @@ struct ToolTipTests {
         view.configure(text: "Move (V)", enabled: true, delay: 0.05)
         view.mouseEntered(with: NSEvent())
         #expect(view.panel == nil)
-        try await Task.sleep(for: .milliseconds(150))
+        // Other suites can occupy the main actor before the delayed task even starts.
+        let deadline = ContinuousClock.now + .seconds(2)
+        while view.panel == nil && ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
         #expect(view.panel?.isVisible == true)
         #expect(view.panel?.ignoresMouseEvents == true)
         #expect(view.hitTest(.zero) == nil)

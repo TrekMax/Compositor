@@ -126,7 +126,7 @@ struct ShortcutDefinition: Identifiable {
         }
         result += [entry("Decrease brush hardness", "[", 8), entry("Increase brush hardness", "]", 8),
                    entry("Previous blend mode", "-", 8), entry("Next blend mode", "=", 8),
-                   entry("Cycle shape kind", "u", 8)]
+                   entry("Cycle shape kind", "u", 8), entry("Paint Bucket tool", "g", 8)]
         for digit in 0...9 { result.append(entry("Opacity digit \(digit) (type two for exact %)", String(digit))) }
         for (direction, key) in [("Left", "\u{f702}"), ("Right", "\u{f703}"), ("Up", "\u{f700}"), ("Down", "\u{f701}")] {
             result += [entry("Nudge \(direction) 1 px", key), entry("Nudge \(direction) 10 px", key, 8),
@@ -148,23 +148,45 @@ final class ShortcutSettings {
     static let shared = ShortcutSettings()
     private(set) var overrides: [String: ShortcutChord] = [:]
     @ObservationIgnored private let panel = FloatingPanelController(name: "keyboardShortcuts")
+    @ObservationIgnored private let defaults: UserDefaults
     private static let storageKey = "keyboardShortcuts.v1"
-    private let defaults: UserDefaults
     /// `defaults` is the app's own everywhere but tests, which use a throwaway suite.
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         guard let data = defaults.data(forKey: Self.storageKey),
               let saved = try? JSONDecoder().decode([String: ShortcutChord].self, from: data) else { return }
-        // Saved shortcuts are taken one at a time, keeping each that still fits: one for a command that has since gone,
-        // or one a new default now takes, drops alone rather than taking every other saved shortcut with it.
         let known = Set(ShortcutDefinition.all.map(\.id))
+        let restored = Self.preservingAssignmentsBeforePaintBucket(saved.filter { known.contains($0.key) })
+        if Self.problem(in: restored) == nil {
+            overrides = restored
+            return
+        }
+        // Saved shortcuts are taken one at a time, keeping each that still fits: one a new default now takes
+        // drops alone rather than taking every other saved shortcut with it.
         var accepted: [String: ShortcutChord] = [:]
-        for (id, chord) in saved.sorted(by: { $0.key < $1.key }) where known.contains(id) {
+        let bucketID = "Canvas & Layers:Paint Bucket tool"
+        if let bucket = restored[bucketID], Self.problem(in: [bucketID: bucket]) == nil {
+            accepted[bucketID] = bucket
+        }
+        for (id, chord) in restored.sorted(by: { $0.key < $1.key }) where known.contains(id) {
             var trial = accepted
             trial[id] = chord
             if Self.problem(in: trial) == nil { accepted = trial }
         }
         overrides = accepted
+    }
+    /// Shift-G was available for customization before Paint Bucket existed. Keep those assignments
+    /// and give the new tool an unused chord instead of rejecting the user's entire configuration.
+    private static func preservingAssignmentsBeforePaintBucket(_ saved: [String: ShortcutChord]) -> [String: ShortcutChord] {
+        guard let bucket = ShortcutDefinition.all.first(where: { $0.id == "Canvas & Layers:Paint Bucket tool" }),
+              saved[bucket.id] == nil, saved.values.contains(bucket.original) else { return saved }
+        let others = ShortcutDefinition.all.filter { $0.id != bucket.id }
+        let used = Set(others.map { saved[$0.id] ?? $0.original })
+        let candidates = [ShortcutChord("g", 10)] + others.map(\.original)
+        guard let fallback = candidates.first(where: { !used.contains($0) }) else { return saved }
+        var restored = saved
+        restored[bucket.id] = fallback
+        return restored
     }
     func chord(_ definition: ShortcutDefinition) -> ShortcutChord { overrides[definition.id] ?? definition.original }
     func menu(_ key: KeyEquivalent, modifiers: EventModifiers) -> ShortcutChord {

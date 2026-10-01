@@ -63,7 +63,8 @@ struct ToolRailStack: View {
     private func toolButton(_ tool: NavigationTool) -> some View {
         Button { session.selectTool(tool) } label: {
             Group {
-                if tool == .gradient { GradientToolIcon().frame(width: 18, height: 18) }
+                if tool == .paintBucket { PaintBucketToolIcon().frame(width: 18, height: 18) }
+                else if tool == .gradient { GradientToolIcon().frame(width: 18, height: 18) }
                 else if tool == .cloneStamp { CloneStampToolIcon().frame(width: 18, height: 18) }
                 else if tool == .lasso, session.lassoKind == .polygonal { PolygonalLassoToolIcon().frame(width: 18, height: 18) }
                 else if tool == .wand, session.wandMode == .object { ObjectSelectionToolIcon().frame(width: 18, height: 18) }

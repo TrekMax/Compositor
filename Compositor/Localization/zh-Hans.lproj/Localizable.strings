@@ -1047,3 +1047,9 @@
 "Tool tip delay" = "工具提示延迟";
 "%.1f seconds" = "%.1f 秒";
 "Tool names appear beside the left toolbar. Changes are saved automatically." = "工具名称显示在左侧工具栏旁。更改会自动保存。";
+"Paint Bucket" = "油漆桶";
+"Paint Bucket (⇧G)" = "油漆桶（⇧G）";
+"Paint Bucket tool" = "油漆桶工具";
+"How far each color channel may differ from the clicked color (0–255)" = "各颜色通道与点击颜色的最大允许差值（0–255）";
+"Fill connected matching pixels; turn off to fill matching colors everywhere" = "填充相连的相近颜色像素；关闭后填充所有相近颜色区域";
+"Click to fill with the foreground color · 1–0 opacity · Space to pan" = "点击以前景色填充 · 1–0 不透明度 · 空格平移";

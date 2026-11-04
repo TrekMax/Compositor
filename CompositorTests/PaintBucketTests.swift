@@ -1,5 +1,7 @@
 import AppKit
+import ImageIO
 import Testing
+import UniformTypeIdentifiers
 @testable import Compositor
 
 @MainActor struct PaintBucketTests {
@@ -164,6 +166,38 @@ import Testing
         await session.paintBucket(at: CGPoint(x: 1.5, y: 0.5))
         #expect(try await pixel(session, 1, 0) == [0, 255, 0, 255])
         #expect(try await pixel(session, 1, 3) == [0, 0, 255, 255])
+    }
+
+    @Test func gifFillMatchesTheDisplayedFrameAndLeavesOtherFramesUntouched() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("bucket-\(UUID().uuidString).gif")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let destination = try #require(CGImageDestinationCreateWithURL(url as CFURL, UTType.gif.identifier as CFString, 2, nil))
+        for frame in 0..<2 {
+            let source = try session { x, _ in frame == 1 && x == 2 ? [0, 0, 255, 255] : [255, 0, 0, 255] }
+            let image = try #require(source.activeLayer?.asset?.image)
+            CGImageDestinationAddImage(destination, image,
+                [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFDelayTime: 0.1]] as CFDictionary)
+        }
+        #expect(CGImageDestinationFinalize(destination))
+        let session = EditorSession()
+        await session.importImages([url])
+        await session.selectGIFTimelineFrame(1)
+        session.selectTool(.paintBucket)
+        session.setPaletteColor(PaletteColor(red: 0, green: 1, blue: 0), background: false)
+        #expect(try await pixel(session, 2, 1) == [0, 0, 255, 255])
+        let before = session.history.undoCount
+        await session.paintBucket(at: CGPoint(x: 0.5, y: 1.5))
+        #expect(session.brushError == nil)
+        #expect(try await pixel(session, 0, 1) == [0, 255, 0, 255])
+        #expect(try await pixel(session, 2, 1) == [0, 0, 255, 255])
+        #expect(try await pixel(session, 4, 1) == [255, 0, 0, 255])
+        #expect(session.history.undoCount == before + 1)
+        await session.selectGIFTimelineFrame(0)
+        #expect(try await pixel(session, 0, 1) == [255, 0, 0, 255])
+        session.undo()
+        await session.selectGIFTimelineFrame(1)
+        #expect(try await pixel(session, 0, 1) == [255, 0, 0, 255])
+        #expect(try await pixel(session, 2, 1) == [0, 0, 255, 255])
     }
 
 }

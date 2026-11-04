@@ -37,15 +37,17 @@ extension EditorSession {
         defer { isProjectBusy = false }
         do {
             let edit = try makeRasterEdit(for: layer, growsMask: true)
+            // GIF editing uses the displayed frame, which may differ from the layer's saved base image.
+            let source = edit.layer
             let sample = try BrushRaster.context(width: document.width, height: document.height, mask: false)
-            if mask, let layerMask = layer.mask {
+            if mask, let layerMask = source.mask {
                 // A placed mask keeps its own transform and its background outside its image.
                 sample.setFillColor(gray: LayerMask.background(of: layerMask.asset.thumbnail), alpha: 1)
                 sample.fill(CGRect(origin: .zero, size: document.size))
-                LayerRenderer.draw(layerMask.asset.image, transform: layer.maskTransform,
-                                   center: layer.maskTransform.center, in: sample)
-            } else if let image = layer.asset?.image {
-                LayerRenderer.draw(image, transform: layer.transform, center: layer.transform.center, in: sample)
+                LayerRenderer.draw(layerMask.asset.image, transform: source.maskTransform,
+                                   center: source.maskTransform.center, in: sample)
+            } else if let image = source.asset?.image {
+                LayerRenderer.draw(image, transform: source.transform, center: source.transform.center, in: sample)
             }
             guard let image = sample.makeImage() else { throw ExportError.render }
             var settings = WandSettings()

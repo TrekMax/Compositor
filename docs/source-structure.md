@@ -35,12 +35,18 @@ The groups organize source files within the existing app module; they are not se
 | `Adjustments` | Curves, Hue/Saturation and Levels panels; `CameraRaw` keeps its controls and native slider together. |
 | `Filters` | Filter panels and previews. |
 | `ImportExport` | Export preview/options and PSD/RAW import dialogs. |
-| `Settings` | Application settings, language selection and tooltip preferences. |
+| `Settings` | Application settings, language selection, tooltip preferences and the keyboard-shortcut editor. |
 | `Commands` | Command search, shortcut definitions, saved assignments and shortcut UI integration. |
 | `Input` | Modifier keys, keyboard-layout translation and tablet-pen detection. |
 | `Shared` | Reusable scrolling, numeric/slider interaction, tooltips and floating-panel hosting. |
 
 UI-specific layout values, such as the project tab layout, belong beside their views even when they do not conform to `View`. These source groups do not change the Swift module or dependency boundaries.
+
+### Layer list and shortcuts
+
+`Layers/NativeLayerList.swift` owns the SwiftUI bridge and its coordinator. `LayerTableView` handles native table selection, keyboard input and drag tracking; `LayerCell` owns the row's controls and private drawing helpers. Effect rows and thumbnail drag behavior live in `LayerEffectRow` and `LayerThumbnailButton`. `ImageLayer+Presentation.swift` contains the size and bit-depth labels used by the UI, beside the views that display them.
+
+`Commands/ShortcutChord.swift` represents and converts key combinations. `ShortcutDefinition` lists the stable command identifiers and defaults; `ShortcutSettings` owns saved assignments, validation and event routing. `KeyboardShortcuts.swift` contains the SwiftUI shortcut modifiers. `Settings/KeyboardShortcutsSheet.swift` owns the editor and its private key recorder. Moving these declarations does not change shortcut IDs, stored assignments or preference keys.
 
 ## Neighboring source areas
 

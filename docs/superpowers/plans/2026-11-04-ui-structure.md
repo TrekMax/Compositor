@@ -51,12 +51,12 @@
 
 **Interfaces:** Preserve `NativeLayerList.Coordinator`, `LayerTableView`, `MaskDisabledMark`, `ShortcutChord`, `ShortcutDefinition`, `ShortcutSettings`, and the existing `View` extension entry points. Keep helper members private unless cross-file use requires internal visibility. Preserve selectors, notification names, drag pasteboard types and keys.
 
-- [ ] Extract complete declarations, including associated comments and extensions. Keep related private helpers together; add only the imports needed by each destination.
-- [ ] Compare declaration bodies with the relocation commit, accounting only for imports, file separators and the minimal access changes. Review every access-level adjustment.
-- [ ] Update `docs/source-structure.md` with the split responsibilities.
-- [ ] Run the focused suites first, then the complete `CompositorTests` suite on the final source snapshot. If known full-run file-monitor timeouts recur, report them and rerun `ExternalChangeTests` separately; do not change unrelated monitor behavior.
-- [ ] Launch the development build and smoke-check layer selection/rename/reorder, shortcut editor and language switching when GUI automation is available; report any interaction that cannot be verified.
-- [ ] Obtain a read-only review, resolve findings, create the second local commit, and verify a clean worktree.
+- [x] Extract complete declarations, including associated comments and extensions. Keep related private helpers together; add only the imports needed by each destination.
+- [x] Compare declaration bodies with the relocation commit, accounting only for imports, file separators and the minimal access changes. Review every access-level adjustment.
+- [x] Update `docs/source-structure.md` with the split responsibilities.
+- [x] Run the focused suites first, then the complete `CompositorTests` suite on the final source snapshot. If known full-run file-monitor timeouts recur, report them and rerun `ExternalChangeTests` separately; do not change unrelated monitor behavior.
+- [x] Launch the development build and smoke-check layer selection/rename/reorder, shortcut editor and language switching when GUI automation is available; report any interaction that cannot be verified.
+- [x] Obtain a read-only review, resolve findings, create the second local commit, and verify a clean worktree.
 
 ## Validation commands
 
@@ -77,3 +77,13 @@ git diff --check
 - The actual CI regex retains all 66 previously covered tracked paths, including the nine moved UI files; new-path positive and unrelated negative cases pass.
 - The signed optimized build and 13 focused suites passed 87/87 tests. Log: `/tmp/compositor-ui-structure-20261104-move-tests.log`.
 - Read-only review found no source or CI defect; its requested search-coverage supplement passed all eight `GroupTests`, bringing focused coverage to 95/95 tests. Log: `/tmp/compositor-ui-structure-20261104-move-group-tests.log`.
+
+## Phase 2 validation
+
+- The two original source files were split into 11 files (nine new). Every original declaration and method body is preserved; seven access changes allow existing collaborators to cross file boundaries. The remaining private helpers stay with their consumers.
+- `NativeLayerList.swift` now contains 537 lines. Its largest extracted file is `LayerCell.swift` at 456 lines. The shortcut files range from 15 to 130 lines.
+- Independent read-only review reconstructed both original source bodies byte-for-byte after restoring the seven access levels and file separators. It found no defects and verified that all 11 files appear exactly once in Xcode's actual source list.
+- The signed optimized build and 14 focused suites passed 95/95 tests. The complete `CompositorTests` run passed 826/826 tests with zero failures or skips, including the file-monitor tests that had timed out in earlier full runs. Logs: `/tmp/compositor-ui-structure-20261104-split-tests.log` and `/tmp/compositor-ui-structure-20261104-full-tests.log`.
+- GUI smoke validation confirmed the development build's Chinese window, canvas creation, adding a layer, and selecting the first layer through its thumbnail. The window and selection were checked through both accessibility state and screenshots.
+- Rename, drag reordering, the shortcut editor and live language switching remain GUI-unverified: background synthetic input did not produce the expected state changes, and the foreground retry was refused after focus went to the separately installed app. No additional foreground retries were made. The test canvas was discarded and the development process exited; the stored language preference remained `system`.
+- No saved project format, resource, localization catalog, shortcut assignment or preference key changed. The system app was not replaced and no branch was pushed.

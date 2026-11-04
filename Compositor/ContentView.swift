@@ -8,6 +8,7 @@ struct ContentView: View {
     @Bindable var session: EditorSession
     var applicationDelegate: CompositorApplicationDelegate? = nil
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
     @State private var canvasFrame: CGRect = .zero
     @State private var levelsPanel = FloatingPanelController(name: "levelsPanel", sharing: "editPanel")
     @State private var adjustmentPanel = FloatingPanelController(name: "adjustmentPanel", sharing: "editPanel")
@@ -318,6 +319,19 @@ struct ContentView: View {
             case .failure(let error):
                 if (error as NSError).code != NSUserCancelledError { session.importError = L10n.errorDescription(error) }
             }
+        }
+        .onChange(of: ModuleManager.shared.availabilityRevision) { _, _ in
+            session.depthAvailabilityChanged()
+        }
+        .alert("Depth extraction unavailable", isPresented: $session.depthExtractionUnavailable) {
+            Button("Manage Modules…") {
+                SettingsRouting.shared.openModules()
+                openSettings()
+            }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(L10n.text("Depth extraction requires an available depth model.") + " "
+                 + L10n.text(ModulePresentation(state: ModuleManager.shared.state(for: ModuleCatalog.depthMini.id)).extractionFeedback))
         }
         .alert("Import couldn’t finish", isPresented: Binding(
             get: { session.importError != nil }, set: { if !$0 { session.importError = nil } })) {

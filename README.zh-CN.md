@@ -108,6 +108,12 @@ brew install --cask robbietilton-compositor
 
 翻译维护方式见[界面语言说明](docs/localization.md)（英文）。上游 README 中“不接受本地化拉取请求”的政策适用于上游项目；本分支独立维护其翻译。
 
+## 可选模块
+
+在 **设置… → 插件与模块** 中管理 DepthMini：查看来源、固定版本、许可证、实际存放路径、下载与已安装大小，以及真实字节进度；支持取消、重试、启用/禁用和确认卸载。当前固定使用 `depth-model-1`，管理的是可选资源，不支持任意可执行插件。
+
+资源位于系统解析的 Application Support 下的 `Compositor/Modules/`，沙盒构建实际位于应用容器内。新下载保留经过 SHA-256 校验的源包；旧版编译缓存迁入会单独标记，不能宣称重新验证了原始源文件摘要。首次使用体积光可自动下载，并保留估算深度回退；取消或卸载会阻止再次自动下载，需手动下载恢复。禁用保留文件并使用估算结果。详细行为及后续功能接入规则见[模块管理文档](docs/module-management.md)。
+
 ## 其他平台
 
 Compositor 本身仅支持 macOS。以下非官方移植版由其他开发者维护，未经原作者审查，也不由原作者提供支持；相关问题请反馈到对应项目：
@@ -140,4 +146,4 @@ Compositor 本身仅支持 macOS。以下非官方移植版由其他开发者维
 
 采用 MIT 许可证，详见 [LICENSE](LICENSE)。
 
-体积光使用的深度模型 DepthMini 蒸馏自 [Depth Anything V2 Small](https://github.com/DepthAnything/Depth-Anything-V2)（Apache-2.0），并以 torchvision 的 ImageNet 预训练 MobileNetV3 权重（BSD-3-Clause）为基础。模型不随应用打包，在首次打开体积光功能时下载。
+体积光使用的深度模型 DepthMini 蒸馏自 [Depth Anything V2 Small](https://github.com/DepthAnything/Depth-Anything-V2)（Apache-2.0），并以 torchvision 的 ImageNet 预训练 MobileNetV3 权重（BSD-3-Clause）为基础。模型不随应用打包，可在首次使用时或设置中下载，并遵循上述模块偏好。

@@ -3,6 +3,7 @@ import SwiftUI
 
 /// The open filter's panel: its settings, Preview, and Cancel / OK.
 struct FilterSheet: View {
+    @Environment(\.openSettings) private var openSettings
     @Bindable var session: EditorSession
     private var edit: FilterEdit? { session.filterEdit }
     private var settings: FilterSettings { edit?.settings ?? FilterSettings() }
@@ -207,6 +208,20 @@ struct FilterSheet: View {
                 Toggle("Preview", isOn: Binding(get: { edit?.preview ?? true },
                                                 set: { session.updateFilter(settings, preview: $0) }))
             }
+            if edit?.kind == .volumetricLight {
+                VStack(alignment: .leading, spacing: 6) {
+                    let presentation = ModulePresentation(state: ModuleManager.shared.state(for: ModuleCatalog.depthMini.id))
+                    Text(L10n.text(presentation.depthFeedback))
+                        .font(.callout).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("depthModuleStatus")
+                    Button("Manage Modules…") {
+                        SettingsRouting.shared.openModules()
+                        openSettings()
+                    }
+                    .accessibilityIdentifier("depthManageModules")
+                }
+            }
             if let error = edit?.previewError {
                 Text(L10n.text(error)).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
             }
@@ -235,7 +250,7 @@ struct FilterSheet: View {
                     Text(L10n.text(edit?.committing == true ? "Applying…" : "Working…"))
                         .font(.callout).foregroundStyle(.secondary)
                 } else if edit?.kind == .volumetricLight, session.preparingDepth {
-                    // The first time only: the depth model is downloading (about 2.6 MB).
+                    // The first preview may wait for migration, download, compilation or loading.
                     ProgressView().controlSize(.small)
                     Text("Getting depth…").font(.callout).foregroundStyle(.secondary)
                 } else if let edit, edit.preparing, edit.kind == .rimLight && !RimLighting.hasSubject(for: edit.hdrPreviewSource ?? edit.previewSource)

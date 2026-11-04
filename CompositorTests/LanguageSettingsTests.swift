@@ -81,6 +81,50 @@ import Testing
         #expect(L10n.format("Save changes to %@?", "My photo", language: .simplifiedChinese) == "要保存对“My photo”的更改吗？")
     }
 
+    @Test func moduleStagesAndErrorsHaveLocalizedPresentation() throws {
+        let english = try catalog(.english), chinese = try catalog(.simplifiedChinese)
+        let phases: [ModuleState.Phase] = [.notInstalled, .migrating, .downloading, .verifying, .compiling,
+                                          .installed, .loading, .ready, .disabled, .removing, .failed, .cancelled]
+        let codes: [ModuleState.Issue.Code] = [.invalidDescriptor, .network, .verification, .compilation, .storage, .runtime, .migration]
+        var keys = phases.flatMap { phase -> [String] in
+            let presentation = ModulePresentation(state: ModuleState(phase: phase, isEnabled: phase != .disabled))
+            return [presentation.status, presentation.depthFeedback, presentation.extractionFeedback]
+        }
+        keys += codes.compactMap { code in
+            ModulePresentation(state: ModuleState(phase: .failed, issue: .init(code: code, message: "Diagnostic"))).issueTitle
+        }
+        keys.append(ModuleCatalog.depthMini.summary)
+        for key in keys {
+            #expect(english[key] == key)
+            #expect(chinese[key] != nil && chinese[key] != key)
+        }
+    }
+
+    @Test func moduleLabelsTranslateWithoutChangingCatalogIdentity() async throws {
+        let fixture = ModuleFixture()
+        let manager = moduleManager(fixture, installer: FixtureInstaller(root: fixture.root))
+        await manager.setEnabled(false, for: fixture.descriptor.id)
+        manager.cancel(fixture.descriptor.id)
+        let modulePreferences = fixture.defaults.dictionaryRepresentation().filter { $0.key.hasPrefix("modules.") } as NSDictionary
+        let languages = LanguageSettings(defaults: fixture.defaults)
+        for language in [AppLanguage.english, .simplifiedChinese, .system] {
+            languages.select(language)
+            #expect(fixture.defaults.dictionaryRepresentation().filter { $0.key.hasPrefix("modules.") } as NSDictionary == modulePreferences)
+            #expect(!manager.state(for: fixture.descriptor.id).isEnabled)
+            #expect(!manager.permitsPreparation(fixture.descriptor.id))
+        }
+        let descriptor = ModuleCatalog.depthMini
+        let fingerprint = try descriptor.catalogFingerprint()
+        #expect(L10n.text("Plug-ins & Modules", language: .simplifiedChinese) == "插件与模块")
+        #expect(L10n.text("Plug-ins & Modules", language: .english) == "Plug-ins & Modules")
+        #expect(L10n.text("Manage Modules…", language: .simplifiedChinese) == "管理模块…")
+        #expect(L10n.text("Download size", language: .simplifiedChinese) == "下载大小")
+        #expect(L10n.text("Installed size", language: .simplifiedChinese) == "已安装大小")
+        #expect(descriptor.id == "depth-mini")
+        #expect(descriptor.version == "depth-model-1")
+        #expect(try descriptor.catalogFingerprint() == fingerprint)
+    }
+
     private func catalog(_ language: AppLanguage) throws -> [String: String] {
         let path = try #require(Bundle.main.path(forResource: language.rawValue, ofType: "lproj"))
         let url = URL(fileURLWithPath: path).appendingPathComponent("Localizable.strings")

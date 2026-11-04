@@ -44,6 +44,8 @@ jobs:
             # Keep the old paths for deletions and comparisons against branches before the source reorganization.
             pattern='^Compositor/Document/(CameraRaw|Filters|HueSaturation|ImageAdjustments|Levels|Curves|Scanlines|Dither|PixelAdjust|AdjustmentEditing|LayerAdjustment)'
             pattern+='|^Compositor/Editor/(Adjustments/|Filters/|Layers/LayerAdjustment\.swift$)'
+            pattern+='|^Compositor/Modules/|^Compositor/IO/DepthModel\.swift$'
+            pattern+='|^CompositorTests/(Module|DepthModel|VolumetricLight)'
             pattern+='|^Compositor/Rendering/(AdjustPixels|LevelsPixels|DitherPixels|LensPixels|NoisePixels|GPUNoise|AdjustmentSurface)'
             pattern+='|^Compositor/UI/(CameraRaw|Curves|FilterSheet|HueSaturation|Levels)'
             pattern+='|^Compositor/UI/(Adjustments/|Filters/)'

@@ -35,7 +35,7 @@ The groups organize source files within the existing app module; they are not se
 | `Adjustments` | Curves, Hue/Saturation and Levels panels; `CameraRaw` keeps its controls and native slider together. |
 | `Filters` | Filter panels and previews. |
 | `ImportExport` | Export preview/options and PSD/RAW import dialogs. |
-| `Settings` | Application settings, language selection, tooltip preferences and the keyboard-shortcut editor. |
+| `Settings` | Application settings, language selection, tooltip preferences, module management (`Settings/Modules`) and the keyboard-shortcut editor. |
 | `Commands` | Command search, shortcut definitions, saved assignments and shortcut UI integration. |
 | `Input` | Modifier keys, keyboard-layout translation and tablet-pen detection. |
 | `Shared` | Reusable scrolling, numeric/slider interaction, tooltips and floating-panel hosting. |
@@ -53,6 +53,7 @@ UI-specific layout values, such as the project tab layout, belong beside their v
 - `UI`: SwiftUI/AppKit controls, panels, menus, shortcuts and other presentation code.
 - `Rendering`: Canvas drawing, caches and overlays, Metal implementations, and C pixel kernels used by the editor.
 - `IO`: Project persistence and format records, import/export codecs, file monitoring, application lifecycle and update integration. `ProjectController` coordinates file operations with an editor session; `ProjectStore` reads and writes the saved representation.
+- `Modules`: Built-in resource catalog, observable lifecycle manager, transactional storage/download/compile, and the shared depth runtime/capability under `Depth`. See [module management](module-management.md) before adding a resource or depth feature.
 - `Localization`: Language selection and translated interface resources.
 - `Resources`: Bundled data, including the Camera Raw color tables and shadow coefficients. Their bundle resource names stay independent of the Swift source folders.
 

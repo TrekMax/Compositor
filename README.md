@@ -100,6 +100,12 @@ This fork supports **English**, **Simplified Chinese**, and **Follow System**. C
 
 Translation maintenance is documented in [Interface languages](docs/localization.md). The upstream README's policy of not accepting localization pull requests applies to the upstream project; this fork maintains its translations separately.
 
+## Optional modules
+
+**Settings… → Plug-ins & Modules** manages DepthMini: source/version/license links, actual storage path, separate download and installed sizes, real byte progress, cancel/retry, enable/disable and confirmed uninstall. The model is pinned to `depth-model-1`; this is a resource manager, not an arbitrary executable plug-in loader.
+
+Resources use the system-resolved Application Support `Compositor/Modules/` directory (inside the app container when sandboxed). New downloads retain SHA-256-verified source; legacy compiled-cache migration is labeled separately and cannot verify original source hashes. First Volumetric Light use may download automatically and falls back to estimated depth. Cancel/uninstall suppress future automatic downloads until a manual download; disable keeps files and uses the fallback. See [module management and integration rules](docs/module-management.md).
+
 ## Other platforms
 
 Compositor is macOS only. These unofficial ports are made by others, not reviewed or supported by me, so please report issues to them:
@@ -134,4 +140,4 @@ MIT — see [LICENSE](LICENSE).
 
 Volumetric Light's depth model, DepthMini, is distilled from [Depth Anything V2 Small](https://github.com/DepthAnything/Depth-Anything-V2)
 (Apache-2.0) and starts from torchvision's ImageNet-trained MobileNetV3 weights (BSD-3-Clause). It isn't in the app:
-it's downloaded the first time Volumetric Light opens.
+it can be downloaded on first use or from Settings, subject to the module preferences described above.

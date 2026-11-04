@@ -1,29 +1,40 @@
 import SwiftUI
+import Observation
 
-private enum SettingsCategory: String, CaseIterable, Identifiable {
+enum SettingsCategory: String, CaseIterable, Identifiable {
     case general
+    case modules
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .general: "General"
+        case .modules: "Plug-ins & Modules"
         }
     }
 
     var systemImage: String {
         switch self {
         case .general: "gearshape"
+        case .modules: "shippingbox"
         }
     }
 }
 
+@MainActor @Observable final class SettingsRouting {
+    static let shared = SettingsRouting()
+    var selectedCategory: SettingsCategory? = .general
+
+    func openModules() { selectedCategory = .modules }
+}
+
 struct ApplicationSettingsView: View {
-    @State private var selectedCategory: SettingsCategory? = .general
+    @Bindable private var routing = SettingsRouting.shared
 
     var body: some View {
         NavigationSplitView(columnVisibility: .constant(.all)) {
-            List(SettingsCategory.allCases, selection: $selectedCategory) { category in
+            List(SettingsCategory.allCases, selection: $routing.selectedCategory) { category in
                 Label(L10n.text(category.title), systemImage: category.systemImage)
                     .tag(category)
             }
@@ -34,11 +45,12 @@ struct ApplicationSettingsView: View {
             .toolbar(removing: .sidebarToggle)
         } detail: {
             Group {
-                switch selectedCategory ?? .general {
+                switch routing.selectedCategory ?? .general {
                 case .general: GeneralSettingsView()
+                case .modules: ModuleSettingsView(manager: .shared)
                 }
             }
-            .navigationTitle(L10n.text((selectedCategory ?? .general).title))
+            .navigationTitle(L10n.text((routing.selectedCategory ?? .general).title))
         }
         .navigationSplitViewStyle(.balanced)
         .frame(minWidth: 680, minHeight: 420)

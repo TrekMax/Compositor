@@ -176,13 +176,13 @@ nonisolated enum VolumetricLighting {
         private var image: CGImage?
         private var extent = CGRect.null
         private var scene: Scene?
-        private var depth: (contrast: Double, keepsSubjectClear: Bool, value: (image: CIImage, distances: [Float])?)?
+        private let depthCache = PreparedDepth()
         private var beams: (key: BeamsKey, image: CIImage)?
 
         /// Starts over when the image changes.
         private func forImage(_ source: CGImage, _ extent: CGRect) {
             guard image !== source || self.extent != extent else { return }
-            image = source; self.extent = extent; scene = nil; depth = nil; beams = nil
+            image = source; self.extent = extent; scene = nil; beams = nil
         }
         func scene(source: CGImage, extent: CGRect, keeps: Bool, make: () throws -> Scene) rethrows -> Scene {
             guard keeps else { return try make() }
@@ -194,13 +194,7 @@ nonisolated enum VolumetricLighting {
         }
         func depth(source: CGImage, extent: CGRect, contrast: Double, keepsSubjectClear: Bool, keeps: Bool,
                    make: () -> (image: CIImage, distances: [Float])?) -> (image: CIImage, distances: [Float])? {
-            guard keeps else { return make() }
-            lock.lock(); forImage(source, extent); let hit = depth; lock.unlock()
-            if let hit, hit.contrast == contrast, hit.keepsSubjectClear == keepsSubjectClear, hit.value != nil || !DepthModel.isReady { return hit.value }
-            let made = make()
-            // Without the model yet, nothing's kept, so its depth is picked up once it's here.
-            lock.lock(); if image === source, made != nil { depth = (contrast, keepsSubjectClear, made) }; lock.unlock()
-            return made
+            depthCache.depth(source: source, extent: extent, contrast: contrast, keepsSubjectClear: keepsSubjectClear, keeps: keeps, make: make)
         }
         func beams(source: CGImage, extent: CGRect, key: BeamsKey, keeps: Bool, make: () throws -> CIImage) rethrows -> CIImage {
             guard keeps else { return try make() }
@@ -209,6 +203,36 @@ nonisolated enum VolumetricLighting {
             let made = try make()
             lock.lock(); if image === source { beams = (key, made) }; lock.unlock()
             return made
+        }
+    }
+
+    final class PreparedDepth: @unchecked Sendable {
+        private let lock = NSLock()
+        private let revision: @Sendable () -> UInt64
+        private var image: CGImage?
+        private var extent = CGRect.null
+        private var depth: (revision: UInt64, contrast: Double, keepsSubjectClear: Bool, value: (image: CIImage, distances: [Float])?)?
+        init(revision: @escaping @Sendable () -> UInt64 = { DepthModel.revision }) { self.revision = revision }
+        private func forImage(_ source: CGImage, _ extent: CGRect) {
+            guard image !== source || self.extent != extent else { return }
+            image = source; self.extent = extent; depth = nil
+        }
+        func depth(source: CGImage, extent: CGRect, contrast: Double, keepsSubjectClear: Bool, keeps: Bool,
+                   make: () -> (image: CIImage, distances: [Float])?) -> (image: CIImage, distances: [Float])? {
+            let generation = revision()
+            if keeps {
+                lock.lock(); forImage(source, extent); let hit = depth; lock.unlock()
+                if let hit, hit.revision == generation, hit.contrast == contrast, hit.keepsSubjectClear == keepsSubjectClear,
+                   revision() == generation { return hit.value }
+            }
+            let made = make()
+            guard revision() == generation else { return nil }
+            lock.lock()
+            if keeps, image === source, self.extent == extent, made != nil, revision() == generation {
+                depth = (generation, contrast, keepsSubjectClear, made)
+            }
+            lock.unlock()
+            return revision() == generation ? made : nil
         }
     }
 
@@ -595,12 +619,21 @@ extension EditorSession {
         guard let edit = filterEdit, edit.kind == .volumetricLight, !edit.committing,
               let source = document?.layers.first(where: { $0.id == edit.layerID }), let image = source.asset?.image else { return }
         let settings = edit.settings.volumetric
+        depthExtractionUnavailable = false
         cancelFilter()
+        guard depthPreparation.permitsPreparation() else { depthExtractionUnavailable = true; return }
+        let token = UUID()
+        depthPreparationID = token
         preparingDepth = true
-        let ready = await DepthModel.prepare()
+        let ready = await depthPreparation.prepare()
+        guard depthPreparationID == token else { return }
         preparingDepth = false
+        defer { if depthPreparationID == token { depthPreparationID = nil } }
+        let revision = depthPreparation.revision()
         let map = ready ? await Task.detached(priority: .userInitiated) { VolumetricLighting.depthMap(for: image, settings: settings) }.value : nil
-        guard let map, let thumbnail = try? PixelAdjust.thumbnail(of: map), canEditLayers,
+        guard depthPreparationID == token else { return }
+        guard depthPreparation.revision() == revision, let map else { depthExtractionUnavailable = true; return }
+        guard let thumbnail = try? PixelAdjust.thumbnail(of: map), canEditLayers,
               let index = document?.layers.firstIndex(where: { $0.id == source.id }) else { NSSound.beep(); return }
         var layer = ImageLayer(asset: ImportedImage(image: map, thumbnail: thumbnail, name: "Depth"), origin: source.origin)
         layer.transform = source.transform

@@ -1161,6 +1161,9 @@ final class EditorSession {
     @ObservationIgnored var exportsLayers: (() async -> Void)?
     /// While Volumetric Light's depth model is downloading or loading, the first time it's used (`DepthModel`).
     var preparingDepth = false
+    var depthExtractionUnavailable = false
+    @ObservationIgnored var depthPreparation = DepthPreparation()
+    @ObservationIgnored var depthPreparationID: UUID?
     /// Set while Convert to 8-Bit ends its edit, so `keepLayerDepths` lets it make 16-bit layers 8-bit.
     @ObservationIgnored var convertsToEightBit = false
 

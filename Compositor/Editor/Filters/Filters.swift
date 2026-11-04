@@ -643,6 +643,7 @@ final class FilterEdit {
     @ObservationIgnored var previewTask: Task<Void, Never>?
     /// Volumetric Light's first preview, held for the depth model (`beginFilter`).
     @ObservationIgnored var waitsForDepth = false
+    @ObservationIgnored var renderPreview: @Sendable (FilterJob) throws -> CGImage = { try PixelFilter.run($0) }
     /// Previews render from a copy no larger than this on its longest side.
     static let previewLimit: CGFloat = 2048
 
@@ -866,33 +867,20 @@ extension EditorSession {
             if fillsCanvas { edit.canvas = canvas }
             edit.startedEmpty = startedEmpty
             edit.repeating = repeating
+            depthPreparationID = nil
+            preparingDepth = false
             filterEdit = edit
             // Volumetric Light's depth model, downloaded the first time: the first preview waits for it, so the fog
             // doesn't draw from its own guess and then jump to the depth. Fetching and compiling it takes about 3 seconds;
             // a slow connection holds it only 5: then the fog guesses until the model is here, and redraws.
             // Without a connection it fails at once, and the fog guesses straight away.
-            let waitsForDepth = kind == .volumetricLight && !repeating && !DepthModel.isReady
+            let needsDepth = kind == .volumetricLight && !repeating && !depthPreparation.isReady()
+            let waitsForDepth = needsDepth && depthPreparation.permitsPreparation()
             if waitsForDepth {
-                preparingDepth = true
-                edit.waitsForDepth = true
-                let guess = Task<Bool, Never> { [weak self, weak edit] in
-                    try? await Task.sleep(for: .seconds(5))
-                    guard !Task.isCancelled, let self, let edit, self.filterEdit === edit, !edit.committing else { return false }
-                    edit.waitsForDepth = false
-                    self.updateFilter(edit.settings, preview: edit.preview)
-                    return true
-                }
-                Task { [weak self, weak edit] in
-                    let ready = await DepthModel.prepare()
-                    guess.cancel()
-                    let guessed = await guess.value
-                    guard let self else { return }
-                    self.preparingDepth = false
-                    edit?.waitsForDepth = false
-                    if ready || !guessed, let edit, self.filterEdit === edit, !edit.committing {
-                        self.updateFilter(edit.settings, preview: edit.preview)
-                    }
-                }
+                prepareDepthForPreview(edit, waitsForFirstPreview: true)
+            } else if needsDepth, let prepareExisting = depthPreparation.prepareExisting {
+                // Suppression skips the wait and network, but an existing installation can still load locally.
+                prepareDepthForPreview(edit, waitsForFirstPreview: false, preparation: prepareExisting, showsProgress: false)
             }
             if kind == .cameraRaw, edit.previewSource.width * edit.previewSource.height >= MetalCameraRawLookup.minimumPixels {
                 Task.detached(priority: .utility) { _ = MetalCameraRawLookup.shared }
@@ -900,6 +888,48 @@ extension EditorSession {
             // An automatic filter commits what its preview made, so it still needs one.
             if !waitsForDepth { updateFilter(edit.settings, preview: !repeating || kind.isAutomatic) }
         } catch { brushError = error.localizedDescription }
+    }
+
+    /// Called when the module manager's availability changes, including enable, disable, cancel and installation.
+    func depthAvailabilityChanged() {
+        guard let edit = filterEdit, edit.kind == .volumetricLight, !edit.committing else { return }
+        depthPreparationID = nil
+        preparingDepth = false
+        edit.waitsForDepth = false
+        if !depthPreparation.isReady(), depthPreparation.permitsPreparation(), depthPreparation.prepareAfterAvailabilityChange() {
+            prepareDepthForPreview(edit, waitsForFirstPreview: false)
+        }
+        updateFilter(edit.settings, preview: edit.preview)
+    }
+
+    private func prepareDepthForPreview(_ edit: FilterEdit, waitsForFirstPreview: Bool,
+                                        preparation: (() async -> Bool)? = nil, showsProgress: Bool = true) {
+        let token = UUID()
+        depthPreparationID = token
+        preparingDepth = showsProgress
+        edit.waitsForDepth = waitsForFirstPreview
+        let guess = Task<Bool, Never> { [weak self, weak edit] in
+            guard waitsForFirstPreview else { return true }
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled, let self, let edit, self.filterEdit === edit,
+                  self.depthPreparationID == token, !edit.committing else { return false }
+            edit.waitsForDepth = false
+            self.updateFilter(edit.settings, preview: edit.preview)
+            return true
+        }
+        let prepare = preparation ?? depthPreparation.prepare
+        Task { [weak self, weak edit] in
+            let ready = await prepare()
+            guess.cancel()
+            let guessed = await guess.value
+            guard let self, let edit, self.filterEdit === edit, self.depthPreparationID == token else { return }
+            self.depthPreparationID = nil
+            self.preparingDepth = false
+            edit.waitsForDepth = false
+            if (ready || !guessed), !edit.committing {
+                self.updateFilter(edit.settings, preview: edit.preview)
+            }
+        }
     }
 
     /// Filter › Last Filter (⌘F): the last filter applied, again, with the same settings and no panel, as in Photoshop.
@@ -973,7 +1003,9 @@ extension EditorSession {
         edit.pending = nil
         let placement = edit.pendingTransform
         let sourceVersion = edit.previewSourceVersion
+        let depthRevision = edit.kind == .volumetricLight ? depthPreparation.revision() : nil
         let hdrSource = edit.kind.isAutomatic ? nil : edit.hdrPreviewSource
+        let renderPreview = edit.renderPreview
         edit.preparing = true
         edit.previewError = nil
         edit.previewTask = Task { @MainActor [weak self, weak edit] in
@@ -994,7 +1026,7 @@ extension EditorSession {
                         let made = try CameraRawScope.preview(run)
                         return (made.image, made.scope, nil, run.cameraRawBrightness)
                     }
-                    return (try PixelFilter.run(run), nil, nil, run.cameraRawBrightness)
+                    return (try renderPreview(run), nil, nil, run.cameraRawBrightness)
                 } catch {
                     return (nil, nil, error.localizedDescription, run.cameraRawBrightness)
                 }
@@ -1005,6 +1037,15 @@ extension EditorSession {
             }
             edit.previewTask = nil
             edit.preparing = false
+            if let depthRevision, self.depthPreparation.revision() != depthRevision {
+                // The old render may have captured depth before disable/unload. Keep the newest queued settings.
+                if edit.pending == nil, edit.preview {
+                    edit.pending = edit.previewJob
+                    edit.pendingTransform = edit.grownTransform
+                }
+                self.renderFilterPreview(edit)
+                return
+            }
             // Made before the layer grew for a bigger blur: it still shows, in the place it was made for, until the
             // render from the grown layer replaces it.
             let current = sourceVersion == edit.previewSourceVersion
@@ -1022,6 +1063,10 @@ extension EditorSession {
     }
 
     func cancelFilter() {
+        if filterEdit?.kind == .volumetricLight {
+            depthPreparationID = nil
+            preparingDepth = false
+        }
         // A filter color still being picked goes with the panel.
         if case .gradientMap = colorPicker?.target { closeColorPicker(commit: false) }
         if case .vignette = colorPicker?.target { closeColorPicker(commit: false) }

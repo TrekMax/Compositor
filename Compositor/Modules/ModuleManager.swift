@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 @MainActor @Observable final class ModuleManager {
-    static let shared = ModuleManager()
+    static let shared = ModuleManager(runtimes: [ModuleCatalog.depthMini.id: DepthModel.runtime])
     nonisolated static var defaultRoot: URL {
         URL.applicationSupportDirectory.appendingPathComponent("Compositor/Modules", isDirectory: true)
     }
@@ -58,11 +58,25 @@ import Observation
         }
     }
 
+    /// Whether a feature should wait for automatic preparation. Explicit installation resets suppression.
+    func permitsPreparation(_ id: String) -> Bool {
+        let state = state(for: id)
+        return state.isEnabled && state.phase != .cancelled && state.phase != .removing
+            && (state.isInstalled || !defaults.bool(forKey: Self.suppressedKey(id)))
+    }
+
     func prepare(_ id: String) async -> Bool {
         guard states[id]?.isEnabled == true else { return false }
         if states[id]?.phase == .ready, runtimes[id]?.isReady == true { return true }
         let mayDownload = !defaults.bool(forKey: Self.suppressedKey(id))
         return await run(id, download: mayDownload, activate: true)
+    }
+
+    /// Feature-scoped local preparation after automatic fetching was suppressed. It never starts a download.
+    func prepareExisting(_ id: String) async -> Bool {
+        guard states[id]?.isEnabled == true, states[id]?.phase != .cancelled, states[id]?.phase != .removing else { return false }
+        if runtimes[id]?.isReady == true { return true }
+        return await run(id, download: false, activate: true)
     }
 
     func install(_ id: String) async {
@@ -106,6 +120,7 @@ import Observation
         defaults.set(true, forKey: Self.suppressedKey(id))
         stop(id)
         states[id]?.phase = .removing
+        availabilityRevision &+= 1
         let token = UUID()
         let task = Task { [self] in
             await draining[id]?.value
@@ -162,6 +177,14 @@ import Observation
                 }
                 guard current(id, token) else { return false }
                 if installation == nil, download {
+                    // Repair may replace a previously loaded generation. Its files stay until all predictions end.
+                    if let runtime = runtimes[id] {
+                        let wasReady = runtime.isReady
+                        runtime.invalidate()
+                        if wasReady { availabilityRevision &+= 1 }
+                        await runtime.unload()
+                        guard current(id, token) else { return false }
+                    }
                     states[id]?.phase = .downloading
                     states[id]?.receivedBytes = 0
                     states[id]?.totalBytes = descriptor.downloadBytes

@@ -6,7 +6,7 @@ import Testing
 @testable import Compositor
 
 /// Filter › Volumetric Light, on a dark room with a bright window crossed by a bar.
-struct VolumetricLightTests {
+@Suite(.serialized) struct VolumetricLightTests {
     private let width = 600, height = 400
 
     /// The window's top-left corner and size, rows top-down, and the bar down its middle.
@@ -37,11 +37,9 @@ struct VolumetricLightTests {
     /// a moment later, even as the panel opening sets its sliders; once the model is here (or can't be had: here, from
     /// a folder without it), it draws.
     @MainActor @Test func theFirstPreviewWaitsForTheDepthModel() async throws {
-        guard !DepthModel.isReady else { return }   // loaded already by another test: nothing to wait for
-        let source = DepthModel.source
-        defer { DepthModel.source = source }
-        DepthModel.source = FileManager.default.temporaryDirectory.appendingPathComponent("no-depth-model-\(UUID().uuidString)/")
+        let gate = ModuleGate()
         let session = EditorSession()
+        session.depthPreparation = DepthPreparation(isReady: { false }, permitsPreparation: { true }, prepare: { await gate.wait(); return false }, revision: { 0 })
         session.createDocument(width: width, height: height, emptyLayer: true)
         let image = try room()
         session.insert(ImportedImage(image: image, thumbnail: image, name: "Room"))
@@ -51,9 +49,172 @@ struct VolumetricLightTests {
         // The panel's sliders write their values back as it opens: no change, so still nothing drawn.
         session.updateFilter(edit.settings, preview: edit.preview)
         #expect(edit.previewTask == nil && edit.preparedPreview == nil, "still no preview")
-        while session.preparingDepth { try await Task.sleep(for: .milliseconds(20)) }
-        while edit.previewTask != nil || edit.preparedPreview == nil { try await Task.sleep(for: .milliseconds(20)) }
+        await waitForModuleCondition { gate.isWaiting }
+        gate.release()
+        await waitForModuleCondition { !session.preparingDepth }
+        #expect(!session.preparingDepth)
+        await waitForModuleCondition { edit.previewTask == nil && edit.preparedPreview != nil }
         #expect(edit.preparedPreview != nil)
+        session.cancelFilter()
+    }
+
+    @MainActor @Test func oldPreparationDoesNotClearTheNewEditsWait() async throws {
+        let first = ModuleGate(), second = ModuleGate()
+        let session = EditorSession()
+        session.depthPreparation = DepthPreparation(isReady: { false }, permitsPreparation: { true }, prepare: { await first.wait(); return false }, revision: { 0 })
+        session.createDocument(width: width, height: height, emptyLayer: true)
+        let image = try room()
+        session.insert(ImportedImage(image: image, thumbnail: image, name: "Room"))
+        session.beginFilter(.volumetricLight)
+        await waitForModuleCondition { first.isWaiting }
+        session.cancelFilter()
+        session.depthPreparation.prepare = { await second.wait(); return false }
+        session.beginFilter(.volumetricLight)
+        let edit = try #require(session.filterEdit)
+        await waitForModuleCondition { second.isWaiting }
+        first.release()
+        try await Task.sleep(for: .milliseconds(30))
+        #expect(session.preparingDepth && edit.waitsForDepth)
+        #expect(edit.previewTask == nil)
+        second.release()
+        await waitForModuleCondition { !session.preparingDepth }
+        session.cancelFilter()
+    }
+
+    @MainActor @Test(arguments: [false, true]) func staleDepthPreviewDoesNotPublishAndNewestRenders(queueChange: Bool) async throws {
+        let generation = DepthTestRevision()
+        let session = EditorSession()
+        session.depthPreparation = DepthPreparation(isReady: { true }, permitsPreparation: { true }, prepare: { true }, revision: { generation.value })
+        session.createDocument(width: width, height: height, emptyLayer: true)
+        let image = try room()
+        session.insert(ImportedImage(image: image, thumbnail: image, name: "Room"))
+        session.beginFilter(.volumetricLight)
+        let edit = try #require(session.filterEdit)
+        await waitForModuleCondition { edit.previewTask == nil && edit.preparedPreview != nil }
+        let initial = try #require(edit.preparedPreview)
+        let renderer = HeldPreviewRenderer()
+        edit.renderPreview = { job in renderer.render(job) }
+        var settings = edit.settings
+        settings.volumetric.haze = 65
+        session.updateFilter(settings, preview: true)
+        await waitForModuleCondition { renderer.first.isWaiting }
+        generation.advance()
+        if queueChange {
+            settings.volumetric.haze = 75
+            session.updateFilter(settings, preview: true)
+        }
+        renderer.first.release()
+        await waitForModuleCondition { renderer.second.isWaiting }
+        #expect(renderer.second.isWaiting, "invalidated frame must schedule the latest preview")
+        #expect(edit.preparedPreview === initial, "the in-flight old model frame cannot publish")
+        renderer.second.release()
+        await waitForModuleCondition { edit.previewTask == nil }
+        #expect(edit.preparedSettings == settings.normalized)
+        session.cancelFilter()
+    }
+
+    @MainActor @Test(arguments: [false, true]) func disabledOrCancelledDepthUsesTheEstimateImmediately(cancelled: Bool) async throws {
+        let fixture = ModuleFixture()
+        let installer = FixtureInstaller(root: fixture.root)
+        let manager = moduleManager(fixture, installer: installer)
+        if cancelled { manager.cancel("tiny") } else { await manager.setEnabled(false, for: "tiny") }
+        let session = EditorSession()
+        session.depthPreparation = DepthPreparation(isReady: { false }, permitsPreparation: { manager.permitsPreparation("tiny") },
+                                                    prepare: { await manager.prepare("tiny") }, revision: { 0 })
+        session.createDocument(width: width, height: height, emptyLayer: true)
+        let image = try room()
+        session.insert(ImportedImage(image: image, thumbnail: image, name: "Room"))
+        session.beginFilter(.volumetricLight)
+        let edit = try #require(session.filterEdit)
+        #expect(!session.preparingDepth && !edit.waitsForDepth)
+        #expect(edit.previewTask != nil)
+        #expect(!FileManager.default.fileExists(atPath: fixture.root.path))
+        session.cancelFilter()
+    }
+
+    @MainActor @Test(arguments: [false, true]) func unavailableExtractionProvidesManagementFeedback(permitted: Bool) async throws {
+        let session = EditorSession()
+        session.depthPreparation = DepthPreparation(isReady: { true }, permitsPreparation: { permitted }, prepare: { false }, revision: { 0 })
+        session.createDocument(width: width, height: height, emptyLayer: true)
+        let image = try room()
+        session.insert(ImportedImage(image: image, thumbnail: image, name: "Room"))
+        session.beginFilter(.volumetricLight)
+        let count = session.document?.layers.count
+        await session.extractDepth()
+        #expect(session.depthExtractionUnavailable)
+        #expect(!session.preparingDepth)
+        #expect(session.document?.layers.count == count)
+    }
+
+    @MainActor @Test(arguments: [false, true]) func suppressedRelaunchLoadsOnlyExistingResources(installed: Bool) async throws {
+        let fixture = ModuleFixture()
+        let installer = LeaseRepairInstaller(root: fixture.root)
+        let first = ModuleManager(descriptors: [fixture.descriptor], root: fixture.root, defaults: fixture.defaults, installer: installer)
+        if installed { await first.install("tiny") }
+        first.cancel("tiny")
+        let runtime = DepthRuntime(load: { _ in ConstantDepthPredictor(value: 0.5) })
+        let reopened = ModuleManager(descriptors: [fixture.descriptor], root: fixture.root, defaults: fixture.defaults,
+                                     installer: installer, runtimes: ["tiny": runtime])
+        let session = EditorSession()
+        session.depthPreparation = DepthPreparation(isReady: { runtime.isReady }, permitsPreparation: { reopened.permitsPreparation("tiny") },
+                                                    prepare: { await reopened.prepare("tiny") }, revision: { runtime.revision },
+                                                    prepareExisting: { await reopened.prepareExisting("tiny") })
+        session.createDocument(width: width, height: height, emptyLayer: true)
+        let image = try room()
+        session.insert(ImportedImage(image: image, thumbnail: image, name: "Room"))
+        session.beginFilter(.volumetricLight)
+        let edit = try #require(session.filterEdit)
+        #expect(!edit.waitsForDepth && !session.preparingDepth, "suppression immediately uses the estimate")
+        #expect(edit.previewTask != nil)
+        await waitForModuleCondition { runtime.isReady || (!installed && edit.previewTask == nil) }
+        #expect(runtime.isReady == installed)
+        #expect(installer.installCount == (installed ? 1 : 0), "background preparation must never download")
+        #expect(!reopened.permitsPreparation("tiny") || installed)
+        session.cancelFilter()
+        await runtime.unload()
+    }
+
+    @MainActor @Test func availabilityChangeReleasesTheFirstPreviewWait() async throws {
+        let gate = ModuleGate()
+        let session = EditorSession()
+        session.depthPreparation = DepthPreparation(isReady: { false }, permitsPreparation: { true }, prepare: { await gate.wait(); return false }, revision: { 0 })
+        session.createDocument(width: width, height: height, emptyLayer: true)
+        let image = try room()
+        session.insert(ImportedImage(image: image, thumbnail: image, name: "Room"))
+        session.beginFilter(.volumetricLight)
+        let edit = try #require(session.filterEdit)
+        await waitForModuleCondition { gate.isWaiting }
+        session.depthPreparation.permitsPreparation = { false }
+        session.depthAvailabilityChanged()
+        #expect(!edit.waitsForDepth && !session.preparingDepth)
+        #expect(edit.previewTask != nil)
+        gate.release()
+        await waitForModuleCondition { edit.previewTask == nil && edit.preparedPreview != nil }
+        #expect(edit.preparedPreview != nil)
+        session.cancelFilter()
+    }
+
+    @MainActor @Test func firstPreviewFallsBackAfterFiveSeconds() async throws {
+        let gate = ModuleGate()
+        let session = EditorSession()
+        session.depthPreparation = DepthPreparation(isReady: { false }, permitsPreparation: { true }, prepare: { await gate.wait(); return false }, revision: { 0 })
+        session.createDocument(width: width, height: height, emptyLayer: true)
+        let image = try room()
+        session.insert(ImportedImage(image: image, thumbnail: image, name: "Room"))
+        let start = ContinuousClock.now
+        session.beginFilter(.volumetricLight)
+        let edit = try #require(session.filterEdit)
+        await waitForModuleCondition { gate.isWaiting }
+        #expect(edit.waitsForDepth)
+        for _ in 0..<350 {
+            if !edit.waitsForDepth { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(start.duration(to: .now) >= .seconds(5))
+        #expect(!edit.waitsForDepth && session.preparingDepth)
+        await waitForModuleCondition { edit.preparedPreview != nil }
+        #expect(edit.preparedPreview != nil)
+        gate.release()
         session.cancelFilter()
     }
 
@@ -174,14 +335,12 @@ struct VolumetricLightTests {
     }
 
     /// Times the filter at preview size as Haze moves, for `VOLUMETRIC_TIMING` (an image path). Skipped when unset.
-    @Test func timeHazeChanges() async throws {
+    @MainActor @Test func timeHazeChanges() async throws {
         guard let path = ProcessInfo.processInfo.environment["VOLUMETRIC_TIMING"],
               let source = CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil),
               let full = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return }
-        if let folder = ProcessInfo.processInfo.environment["VOLUMETRIC_DEPTH"] {
-            DepthModel.source = URL(fileURLWithPath: folder, isDirectory: true)
-            _ = await DepthModel.prepare()
-        }
+        let fixture = ProcessInfo.processInfo.environment["VOLUMETRIC_DEPTH"] == "1" ? try await managedVolumetricDepth() : nil
+        defer { if fixture != nil { DepthModel.runtime.invalidate() }; withExtendedLifetime(fixture) {} }
         // At the preview's size, 2048 on the long side.
         let scale = 2048 / Double(max(full.width, full.height))
         let context = try BrushRaster.context(width: Int(Double(full.width) * scale), height: Int(Double(full.height) * scale), mask: false)
@@ -208,14 +367,14 @@ struct VolumetricLightTests {
 
     /// Renders the photos in `VOLUMETRIC_IMAGES` ("path,x,y" separated by ";", the light as fractions of the width and
     /// height from the top left) as attachments, to look at. Skipped when it's unset.
-    /// With `VOLUMETRIC_DEPTH` set to a folder laid out as the release is, each is rendered twice: guessing depth, then
-    /// with the depth model downloaded from there ("-a" and "-b").
-    @Test func renderSamples() async throws {
+    /// With `VOLUMETRIC_DEPTH=1`, each is rendered twice: guessing depth, then with the pinned model installed by
+    /// the manager in a temporary store ("" and "-b"). This opt-in never uses the user's model cache.
+    @MainActor @Test func renderSamples() async throws {
         guard let list = ProcessInfo.processInfo.environment["VOLUMETRIC_IMAGES"] else { return }
         try render(list, suffix: "")
-        if let folder = ProcessInfo.processInfo.environment["VOLUMETRIC_DEPTH"] {
-            DepthModel.source = URL(fileURLWithPath: folder, isDirectory: true)
-            #expect(await DepthModel.prepare(), "the model downloads, checks out and loads")
+        if ProcessInfo.processInfo.environment["VOLUMETRIC_DEPTH"] == "1" {
+            let fixture = try await managedVolumetricDepth()
+            defer { DepthModel.runtime.invalidate(); withExtendedLifetime(fixture) {} }
             try render(list, suffix: "-b")
             for (index, entry) in list.split(separator: ";").enumerated() {
                 let path = String(entry.split(separator: ",")[0])
@@ -263,4 +422,25 @@ struct VolumetricLightTests {
             Attachment.record(data as Data, named: "sample-\(index)\(suffix)-lit.png")
         }
     }
+}
+
+nonisolated final class HeldPreviewRenderer: @unchecked Sendable {
+    let first = HeldDepthPredictor(), second = HeldDepthPredictor()
+    private let lock = NSLock()
+    private var count = 0
+    func render(_ job: FilterJob) -> CGImage {
+        let step = lock.withLock { count += 1; return count }
+        if step == 1 { _ = first.depth(for: job.image) }
+        if step == 2 { _ = second.depth(for: job.image) }
+        return job.image
+    }
+}
+
+@MainActor private func managedVolumetricDepth() async throws -> ModuleFixture {
+    let fixture = ModuleFixture()
+    let manager = ModuleManager(root: fixture.root, defaults: fixture.defaults,
+                                installer: CoreMLModuleInstaller(root: fixture.root, legacyBase: fixture.root.appendingPathComponent("legacy")),
+                                runtimes: [ModuleCatalog.depthMini.id: DepthModel.runtime])
+    try #require(await manager.prepare(ModuleCatalog.depthMini.id))
+    return fixture
 }

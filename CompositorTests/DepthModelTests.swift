@@ -87,6 +87,60 @@ struct DepthModelTests {
         #expect(!runtime.isReady)
     }
 
+    @MainActor @Test(arguments: ["install", "local"], ["none", "cancel", "disable"])
+    func migrationRepairWaitsForInferenceAndHonorsRevocation(route: String, action: String) async throws {
+        let fixture = ModuleFixture()
+        let installer = LeaseRepairInstaller(root: fixture.root)
+        let predictor = HeldDepthPredictor()
+        let runtime = DepthRuntime(load: { url in
+            let generation = try String(contentsOf: url.appendingPathComponent("generation"), encoding: .utf8)
+            return generation == "migrated" ? ConstantDepthPredictor(value: 0.75) : predictor
+        })
+        let manager = ModuleManager(descriptors: [fixture.descriptor], root: fixture.root, defaults: fixture.defaults,
+                                    installer: installer, runtimes: ["tiny": runtime])
+        #expect(await manager.prepare("tiny"))
+        let image = try depthFixtureImage()
+        let prediction = Task.detached { runtime.depth(for: image) }
+        await waitForModuleCondition { predictor.isWaiting }
+        #expect(predictor.isWaiting)
+        let revision = manager.availabilityRevision
+        installer.requireRepair(migration: true)
+        // Local-only recovery can find a provider already invalidated while its old prediction still holds a lease.
+        if route == "local" { runtime.invalidate() }
+        let repairing = Task {
+            if route == "local" { _ = await manager.prepareExisting("tiny") }
+            else { await manager.install("tiny") }
+        }
+        await waitForModuleCondition { installer.inspectedRepair }
+        try await Task.sleep(for: .milliseconds(30))
+        #expect(!runtime.isReady)
+        if route == "install" { #expect(manager.availabilityRevision != revision) }
+        #expect(installer.migrationCount == 0, "migration cannot start while old-generation files are leased")
+        #expect(try String(contentsOf: installer.marker, encoding: .utf8) == "1")
+        var disabling: Task<Void, Never>?
+        if action == "cancel" { manager.cancel("tiny") }
+        if action == "disable" {
+            disabling = Task { await manager.setEnabled(false, for: "tiny") }
+            await waitForModuleCondition { !manager.state(for: "tiny").isEnabled }
+        }
+        predictor.release()
+        #expect(await prediction.value == nil)
+        await repairing.value
+        await disabling?.value
+        #expect(installer.installCount == 1, "local migration must not start a download")
+        #expect(installer.migrationCount == (action == "none" ? 1 : 0))
+        #expect(try String(contentsOf: installer.marker, encoding: .utf8) == (action == "none" ? "migrated" : "1"))
+        if action == "none" {
+            #expect(manager.state(for: "tiny").provenance == .migratedCompiledCache)
+            if route == "install" {
+                #expect(!runtime.isReady, "manual migration must not retain the old ready predictor")
+                #expect(await manager.prepare("tiny"))
+            }
+            #expect(runtime.depth(for: image)?.values == [0.75], "only the migrated predictor may become ready")
+        } else { #expect(!runtime.isReady) }
+        await runtime.unload()
+    }
+
     @MainActor @Test func uninstallAnnouncesInvalidationBeforeItsLeaseDrains() async throws {
         let fixture = ModuleFixture()
         let installer = LeaseRepairInstaller(root: fixture.root)
@@ -180,15 +234,33 @@ nonisolated final class LeaseRepairInstaller: ModuleInstalling, @unchecked Senda
     private let root: URL
     private var repair = false
     private var count = 0
+    private var migrationAvailable = false
+    private var migrations = 0
+    private var inspected = false
     init(root: URL) { self.root = root }
     var marker: URL { root.appendingPathComponent("model/generation") }
     var installCount: Int { lock.withLock { count } }
-    func requireRepair() { lock.withLock { repair = true } }
+    var migrationCount: Int { lock.withLock { migrations } }
+    var inspectedRepair: Bool { lock.withLock { inspected } }
+    func requireRepair(migration: Bool = false) { lock.withLock { repair = true; migrationAvailable = migration } }
     func inspect(_ descriptor: ModuleDescriptor) async throws -> ModuleInstallation? {
-        guard !lock.withLock({ repair }), FileManager.default.fileExists(atPath: marker.path) else { return nil }
+        let needsRepair = lock.withLock { if repair { inspected = true }; return repair }
+        guard !needsRepair, FileManager.default.fileExists(atPath: marker.path) else { return nil }
         return ModuleInstallation(compiledURL: marker.deletingLastPathComponent(), bytes: 1, provenance: .verifiedDownload)
     }
-    func migrate(_ descriptor: ModuleDescriptor, progress: @escaping @Sendable (ModuleProgress) async -> Void) async throws -> ModuleInstallation? { nil }
+    func migrate(_ descriptor: ModuleDescriptor, progress: @escaping @Sendable (ModuleProgress) async -> Void) async throws -> ModuleInstallation? {
+        let available = lock.withLock {
+            guard repair && migrationAvailable else { return false }
+            migrations += 1; repair = false
+            return true
+        }
+        guard available else { return nil }
+        let model = marker.deletingLastPathComponent()
+        try FileManager.default.removeItem(at: model)
+        try FileManager.default.createDirectory(at: model, withIntermediateDirectories: true)
+        try Data("migrated".utf8).write(to: marker)
+        return ModuleInstallation(compiledURL: model, bytes: 8, provenance: .migratedCompiledCache)
+    }
     func install(_ descriptor: ModuleDescriptor, progress: @escaping @Sendable (ModuleProgress) async -> Void) async throws -> ModuleInstallation {
         let generation = lock.withLock { count += 1; repair = false; return count }
         let model = marker.deletingLastPathComponent()

@@ -168,6 +168,14 @@ import Observation
                 }
                 guard current(id, token) else { return false }
                 if installation == nil {
+                    // Migration or download repair may replace a previously loaded generation. Its files stay until all predictions end.
+                    if let runtime = runtimes[id] {
+                        let wasReady = runtime.isReady
+                        runtime.invalidate()
+                        if wasReady { availabilityRevision &+= 1 }
+                        await runtime.unload()
+                        guard current(id, token) else { return false }
+                    }
                     do {
                         installation = try await installer.migrate(descriptor) { progress in
                             await self.accept(progress, for: id, operation: token)
@@ -177,14 +185,6 @@ import Observation
                 }
                 guard current(id, token) else { return false }
                 if installation == nil, download {
-                    // Repair may replace a previously loaded generation. Its files stay until all predictions end.
-                    if let runtime = runtimes[id] {
-                        let wasReady = runtime.isReady
-                        runtime.invalidate()
-                        if wasReady { availabilityRevision &+= 1 }
-                        await runtime.unload()
-                        guard current(id, token) else { return false }
-                    }
                     states[id]?.phase = .downloading
                     states[id]?.receivedBytes = 0
                     states[id]?.totalBytes = descriptor.downloadBytes

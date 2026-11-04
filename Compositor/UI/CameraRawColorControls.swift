@@ -348,7 +348,7 @@ struct CameraRawMixerControls: View {
                         .overlay { Circle().stroke(edit?.cameraRawMixerSwatch == index ? Color.white : Color.clear, lineWidth: 2) }
                 }
                 .buttonStyle(.plain)
-                .help("Edit \(CameraRawMixerSettings.names[index]).")
+                .help(L10n.format("Edit %@.", L10n.text(CameraRawMixerSettings.names[index])))
             }
         }
     }

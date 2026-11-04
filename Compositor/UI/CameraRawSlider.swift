@@ -58,6 +58,7 @@ enum CameraRawSliderTrack {
 /// Camera Raw slider. A double-click on the knob restores the default. A gradient track, when set,
 /// replaces the system bar so the whole track shows the color, not only the side before the knob.
 struct CameraRawSlider: NSViewRepresentable {
+    @Environment(\.locale) private var locale
     var value: Double
     var range: ClosedRange<Double>
     var track: CameraRawSliderTrack
@@ -78,11 +79,11 @@ struct CameraRawSlider: NSViewRepresentable {
         slider.isContinuous = true
         slider.target = context.coordinator
         slider.action = #selector(Coordinator.changed(_:))
-        slider.toolTip = help
+        slider.toolTip = L10n.text(help)
         slider.onReset = context.coordinator.reset
         slider.onTrackClick = context.coordinator.onChange
         (slider.cell as? GradientSliderCell)?.gradientColors = track.colors
-        slider.setAccessibilityLabel(help)
+        slider.setAccessibilityLabel(L10n.text(help))
         return slider
     }
 
@@ -91,11 +92,13 @@ struct CameraRawSlider: NSViewRepresentable {
     }
 
     func updateNSView(_ slider: CameraRawSliderView, context: Context) {
+        _ = locale
         context.coordinator.onChange = onChange
         context.coordinator.onReset = onReset
         slider.onReset = context.coordinator.reset
         slider.onTrackClick = context.coordinator.onChange
-        slider.toolTip = help
+        slider.toolTip = L10n.text(help)
+        slider.setAccessibilityLabel(L10n.text(help))
         slider.minValue = range.lowerBound
         slider.maxValue = range.upperBound
         if !slider.isTrackingValue { slider.doubleValue = value }

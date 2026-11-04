@@ -1074,7 +1074,7 @@ final class EditorSession {
                     }
                     for page in pages.reversed() { insert(page, centeredAt: point) }
                 } else if PSDReader.matches(url) {
-                    beginPSDReading(title: "Open “\(url.lastPathComponent)”?", confirmTitle: "Import")
+                    beginPSDReading(title: "Open “\(url.lastPathComponent)”?", confirmTitle: "Import", sourceName: url.lastPathComponent)
                     let imported: PSDImport
                     do {
                         let parsed = try await ImageImporter.shared.loadPhotoshop(url, remainingPixels: DocumentLimits.documentPixelBudget - usedPixels)
@@ -1107,7 +1107,7 @@ final class EditorSession {
                     insert(asset, centeredAt: point)
                 }
             } catch {
-                failures.append("\(url.lastPathComponent): \(error.localizedDescription)")
+                failures.append("\(url.lastPathComponent): \(L10n.errorDescription(error))")
             }
           }
           endEdit()
@@ -1206,17 +1206,17 @@ final class EditorSession {
             refreshCanvasPreview?()
         } catch {
             guard gifFrameSelectionRequestID == requestID else { return }
-            importError = "Couldn’t read GIF frame \(index + 1): \(error.localizedDescription)"
+            importError = L10n.format("Couldn’t read GIF frame %lld: %@", index + 1, L10n.errorDescription(error))
         }
     }
 
     /// The UI task owns playback's lifetime. Only per-layer runtime previews change, together after decoding.
     /// Puts the sheet up before the file is read, so a big PSD doesn't leave the click unanswered.
     /// `finishPSDReading` fills it in, or takes it away when there is nothing to report.
-    func beginPSDReading(title: String, confirmTitle: String) {
+    func beginPSDReading(title: String, confirmTitle: String, sourceName: String? = nil) {
         guard confirmConversions == nil else { return }
         conversionCancelled = false
-        conversionRequest = PSDConversionRequest(title: title, confirmTitle: confirmTitle, conversions: [], isReading: true)
+        conversionRequest = PSDConversionRequest(title: title, confirmTitle: confirmTitle, conversions: [], isReading: true, sourceName: sourceName)
         showsConversionSheet = true
     }
     func finishPSDReading(_ conversions: [PSDConversion]) async -> Bool {
@@ -1269,7 +1269,7 @@ final class EditorSession {
     /// One Photoshop artboard's layers as this tab's document, after the conversion report when there's anything in it.
     func importArtboard(_ parsed: PSDDocument, named name: String) async {
         do {
-            beginPSDReading(title: "Open “\(name)”?", confirmTitle: "Import")
+            beginPSDReading(title: "Open “\(name)”?", confirmTitle: "Import", sourceName: name)
             let imported: PSDImport
             do {
                 let assets = try await ImageImporter.shared.photoshopAssets(parsed)
@@ -1283,7 +1283,7 @@ final class EditorSession {
             try insertPhotoshop(imported, named: name)
             if startsDocument, let profile = parsed.cmykProfile { proofProfile = CMYK.adopt(profile) }
         } catch {
-            importError = [importError, "\(name): \(error.localizedDescription)"].compactMap { $0 }.joined(separator: "\n\n")
+            importError = [importError, "\(name): \(L10n.errorDescription(error))"].compactMap { $0 }.joined(separator: "\n\n")
         }
     }
 

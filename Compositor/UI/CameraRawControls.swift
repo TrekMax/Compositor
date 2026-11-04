@@ -320,8 +320,8 @@ struct CameraRawControls: View {
             Image(systemName: shown ? "eye" : "eye.slash")
         }
         .buttonStyle(.borderless)
-        .help(shown ? "Hide \(name) in the preview" : "Show \(name) in the preview")
-        .accessibilityLabel(shown ? "Hide \(name)" : "Show \(name)")
+        .help(L10n.format(shown ? "Hide %@ in the preview" : "Show %@ in the preview", L10n.text(name)))
+        .accessibilityLabel(L10n.format(shown ? "Hide %@" : "Show %@", L10n.text(name)))
     }
 
     /// Puts an adjusted section back to its defaults.
@@ -331,8 +331,8 @@ struct CameraRawControls: View {
         }
         .buttonStyle(.borderless)
         .disabled(session.filterEdit?.committing == true)
-        .help("Reset \(group.rawValue) to its defaults")
-        .accessibilityLabel("Reset \(group.rawValue)")
+        .help(L10n.format("Reset %@ to its defaults", L10n.text(group.rawValue)))
+        .accessibilityLabel(L10n.format("Reset %@", L10n.text(group.rawValue)))
     }
 
     private func slider(_ title: String, _ key: WritableKeyPath<CameraRawSettings, Double>, range: ClosedRange<Double>,

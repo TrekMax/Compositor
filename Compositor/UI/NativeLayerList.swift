@@ -193,13 +193,13 @@ struct NativeLayerList: NSViewRepresentable {
             // layer can go to 16 bits as well as to 8). Shown, greyed, for layers neither applies to.
             let sixteen = session.canConvertToSixteenBit, eight = session.canConvertToEightBit
             if sixteen || !eight {
-                let sixteenItem = NSMenuItem(title: "Convert to 16-Bit", action: #selector(convertToSixteenBitAction), keyEquivalent: "")
+                let sixteenItem = NSMenuItem(title: L10n.text("Convert to 16-Bit"), action: #selector(convertToSixteenBitAction), keyEquivalent: "")
                 sixteenItem.target = self
                 sixteenItem.isEnabled = validateMenuItem(sixteenItem)
                 menu.addItem(sixteenItem)
             }
             if eight {
-                let eightItem = NSMenuItem(title: "Convert to 8-Bit", action: #selector(convertToEightBitAction), keyEquivalent: "")
+                let eightItem = NSMenuItem(title: L10n.text("Convert to 8-Bit"), action: #selector(convertToEightBitAction), keyEquivalent: "")
                 eightItem.target = self
                 eightItem.isEnabled = validateMenuItem(eightItem)
                 menu.addItem(eightItem)
@@ -255,7 +255,7 @@ struct NativeLayerList: NSViewRepresentable {
 
             // 13. Export Layer as PNG… / Export Layers as PNGs…
             let exportTitle = session.selectedLayerIDs.count > 1 ? "Export Layers as PNGs…" : "Export Layer as PNG…"
-            let exportItem = NSMenuItem(title: exportTitle, action: #selector(exportLayersAction), keyEquivalent: "")
+            let exportItem = NSMenuItem(title: L10n.text(exportTitle), action: #selector(exportLayersAction), keyEquivalent: "")
             exportItem.target = self
             exportItem.isEnabled = validateMenuItem(exportItem)
             menu.addItem(exportItem)
@@ -641,7 +641,7 @@ final class LayerTableView: NSTableView {
             drawOutlined(box, in: NSRect(x: 10, y: 1, width: 19, height: 17))
             return true
         }
-        image.accessibilityDescription = releasing ? "Release clipping mask" : "Create clipping mask"
+        image.accessibilityDescription = L10n.text(releasing ? "Release clipping mask" : "Create clipping mask")
         return NSCursor(image: image, hotSpot: NSPoint(x: 3, y: 3))
     }
     private static let createClippingCursor = clippingCursor(releasing: false)
@@ -666,7 +666,7 @@ final class LayerTableView: NSTableView {
                             fraction: 1, respectFlipped: true, hints: nil)
             return true
         }
-        image.accessibilityDescription = "Show mask alone"
+        image.accessibilityDescription = L10n.text("Show mask alone")
         return NSCursor(image: image, hotSpot: base.hotSpot)
     }()
     override func updateTrackingAreas() {
@@ -718,13 +718,16 @@ final class LayerTableView: NSTableView {
         let layer = displayedRows[index]
         // Option-click on a mask shows it alone (Option-dragging it onto another layer still copies it).
         if let thumbnail = thumbnail(at: point), thumbnail.isMaskTarget, !thumbnail.isHidden {
+            Self.showMaskCursor.image.accessibilityDescription = L10n.text("Show mask alone")
             return Self.showMaskCursor
         }
         guard isClippingZone(point, row: index) else {
             return session.canEditLayers ? CanvasView.duplicateCursor : NSCursor.arrow
         }
         guard session.canToggleClippingMask(layer.id) else { return NSCursor.arrow }
-        return layer.maskSourceID == nil ? Self.createClippingCursor : Self.releaseClippingCursor
+        let cursor = layer.maskSourceID == nil ? Self.createClippingCursor : Self.releaseClippingCursor
+        cursor.image.accessibilityDescription = L10n.text(layer.maskSourceID == nil ? "Create clipping mask" : "Release clipping mask")
+        return cursor
     }
 
     /// Option-click clips along the bottom edge of a row: a fixed strip, not a share of the row's height, so a row
@@ -871,7 +874,7 @@ private final class LayerCell: NSTableCellView, NSTextFieldDelegate {
     private var maskGap: NSLayoutConstraint!
     /// The chain symbol runs corner to corner; turned 45° counterclockwise it stands upright in a narrow gap.
     private static let linkImage: NSImage? = {
-        guard let symbol = NSImage(systemSymbolName: "link", accessibilityDescription: "Linked")?
+        guard let symbol = NSImage(systemSymbolName: "link", accessibilityDescription: nil)?
             .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 10, weight: .medium)) else { return nil }
         let side = max(symbol.size.width, symbol.size.height)
         let image = NSImage(size: NSSize(width: ceil(side * 0.7), height: ceil(side * 1.45)), flipped: false) { rect in
@@ -1030,7 +1033,7 @@ private final class LayerCell: NSTableCellView, NSTextFieldDelegate {
         // While the panel filters, folders list themselves opened; the chevron says so, and collapsing
         // waits until the filter is off (toggling now would change nothing the list shows).
         disclosure.isEnabled = enabled && !session.isFilteringLayers
-        disclosure.image = NSImage(systemSymbolName: session.isFilteringLayers || !session.collapsedGroupIDs.contains(layer.id) ? "chevron.down" : "chevron.right", accessibilityDescription: "Expand or collapse folder")
+        disclosure.image = NSImage(systemSymbolName: session.isFilteringLayers || !session.collapsedGroupIDs.contains(layer.id) ? "chevron.down" : "chevron.right", accessibilityDescription: L10n.text("Expand or collapse folder"))
         // Pixel layers and masks show the whole canvas with their pixels where they sit, as Photoshop does;
         // editable text, adjustments and folders keep a square icon. Pictures redraw only when what they show changes.
         let canvas = session.document?.size ?? CGSize(width: 1, height: 1)
@@ -1046,6 +1049,11 @@ private final class LayerCell: NSTableCellView, NSTextFieldDelegate {
                     : editableText ? Self.adjustmentIcon("textformat", description: "Editable text")
                     : CanvasThumbnail.layer(layer.asset?.thumbnail, transform: layer.transform, canvas: canvas, box: 36))
             thumbnailKey = key
+        }
+        if let adjustment = layer.adjustment {
+            thumbnail.image?.accessibilityDescription = L10n.text(adjustment.kind.rawValue)
+        } else if layer.isGroup || editableText {
+            thumbnail.image?.accessibilityDescription = L10n.text(layer.isGroup ? "Folder" : "Editable text")
         }
         let maskSize = CanvasThumbnail.fittedSize(canvas: canvas, box: 30)
         maskThumbnailWidth.constant = maskSize.width
@@ -1067,8 +1075,8 @@ private final class LayerCell: NSTableCellView, NSTextFieldDelegate {
         linkButton.isHidden = !linkable
         linkButton.image = layer.mask?.isLinked == false ? nil : Self.linkImage
         linkButton.isEnabled = thumbnail.isEnabled
-        linkButton.toolTip = layer.mask?.isLinked == false ? "Link layer and mask so they move together"
-            : "Unlink layer and mask to move or transform them separately"
+        linkButton.toolTip = L10n.text(layer.mask?.isLinked == false ? "Link layer and mask so they move together"
+            : "Unlink layer and mask to move or transform them separately")
         linkButton.setAccessibilityLabel(L10n.format(layer.mask?.isLinked == false ? "Link mask: %@" : "Unlink mask: %@", layer.name))
         thumbnail.toolTip = L10n.text(editableText ? "Editable text layer" : "Select image pixels")
         maskThumbnail.toolTip = L10n.text("Select layer mask; Option-click to view it alone; Shift-click to enable/disable; Cmd-click to select its black areas (Cmd-Shift adds, Cmd-Option subtracts)")
@@ -1079,17 +1087,18 @@ private final class LayerCell: NSTableCellView, NSTextFieldDelegate {
         // A reused cell must not carry another row's half-finished rename.
         if renaming, layerID != layer.id { restoreLabel() }
         if !renaming { nameLabel.stringValue = (layer.maskSourceID == nil ? "" : "↳ ") + layer.name }
-        dimensions.stringValue = layer.liveText != nil ? "Text · Double-click to edit" : layer.adjustment != nil ? "Adjustment · Double-click to edit" : layer.isGroup ? "Folder" : layer.sizeLabel
-        depthTag.text = layer.depthLabel ?? ""
-        depthTag.toolTip = layer.gifAnimation != nil ? "Animated GIF: select it to show its frames under the canvas"
+        dimensions.stringValue = layer.liveText != nil ? L10n.text("Text · Double-click to edit")
+            : layer.adjustment != nil ? L10n.text("Adjustment · Double-click to edit") : layer.isGroup ? L10n.text("Folder") : layer.sizeLabel
+        depthTag.text = layer.depthLabel.map { L10n.text($0) } ?? ""
+        depthTag.toolTip = L10n.text(layer.gifAnimation != nil ? "Animated GIF: select it to show its frames under the canvas"
             : layer.asset?.isHDR == true ? "HDR layer: keeps light brighter than white, shown as white"
-            : "16-bit layer: keeps 16 bits a channel"
+            : "16-bit layer: keeps 16 bits a channel")
         depthTag.isHidden = layer.depthLabel == nil || layer.maskSourceID != nil
         depthTagFits.isActive = !depthTag.isHidden
         if let source = layer.maskSourceID {
-            let sourceName = session.document?.layers.first(where: { $0.id == source })?.name ?? "Missing source"
-            dimensions.stringValue = "Clipped to \(sourceName)"
-            dimensions.toolTip = "Clipping mask based on \(sourceName). Option-click the bottom of its row to release."
+            let sourceName = session.document?.layers.first(where: { $0.id == source })?.name ?? L10n.text("Missing source")
+            dimensions.stringValue = L10n.format("Clipped to %@", sourceName)
+            dimensions.toolTip = L10n.format("Clipping mask based on %@. Option-click the bottom of its row to release.", sourceName)
         } else { dimensions.toolTip = nil }
         eye.image = NSImage(systemSymbolName: layer.isVisible ? "eye" : "eye.slash", accessibilityDescription: nil)
         eye.setAccessibilityLabel(L10n.format(layer.isVisible ? "Hide %@" : "Show %@", layer.name))
@@ -1109,8 +1118,8 @@ private final class LayerCell: NSTableCellView, NSTextFieldDelegate {
         if let layer = session?.document?.layers.first(where: { $0.id == layerID }),
            let sourceID = layer.maskSourceID,
            let source = session?.document?.layers.first(where: { $0.id == sourceID }) {
-            dimensions.stringValue = "Clipped to \(source.name)"
-            dimensions.toolTip = "Clipping mask based on \(source.name). Option-click the bottom of its row to release."
+            dimensions.stringValue = L10n.format("Clipped to %@", source.name)
+            dimensions.toolTip = L10n.format("Clipping mask based on %@. Option-click the bottom of its row to release.", source.name)
         }
         let active = session?.activeLayerID == layerID && session?.selectedLayerIDs.count == 1
         let mask = session?.isMaskSelected == true
@@ -1201,7 +1210,7 @@ private final class LayerCell: NSTableCellView, NSTextFieldDelegate {
     private static var adjustmentIcons: [String: NSImage] = [:]
     /// The folder symbol at 80% of the size it would fill the thumbnail slot with.
     private static let folderIcon: NSImage? = {
-        guard let symbol = NSImage(systemSymbolName: "folder", accessibilityDescription: "Folder") else { return nil }
+        guard let symbol = NSImage(systemSymbolName: "folder", accessibilityDescription: nil) else { return nil }
         let fit = 36 * 0.8 / max(symbol.size.width, symbol.size.height)
         let size = NSSize(width: symbol.size.width * fit, height: symbol.size.height * fit)
         let icon = NSImage(size: NSSize(width: 36, height: 36), flipped: false) { bounds in
@@ -1209,12 +1218,15 @@ private final class LayerCell: NSTableCellView, NSTextFieldDelegate {
             return true
         }
         icon.isTemplate = true
-        icon.accessibilityDescription = "Folder"
+        icon.accessibilityDescription = L10n.text("Folder")
         return icon
     }()
     private static func adjustmentIcon(_ symbolName: String, description: String, quarterTurnClockwise: Bool = false) -> NSImage? {
-        if let icon = adjustmentIcons[symbolName] { return icon }
-        guard let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: description) else { return nil }
+        if let icon = adjustmentIcons[symbolName] {
+            icon.accessibilityDescription = L10n.text(description)
+            return icon
+        }
+        guard let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) else { return nil }
         let size = NSSize(width: symbol.size.width * 1.21, height: symbol.size.height * 1.21)
         let icon = NSImage(size: NSSize(width: 36, height: 36), flipped: false) { bounds in
             let transform = NSAffineTransform()
@@ -1226,7 +1238,7 @@ private final class LayerCell: NSTableCellView, NSTextFieldDelegate {
             return true
         }
         icon.isTemplate = true
-        icon.accessibilityDescription = description
+        icon.accessibilityDescription = L10n.text(description)
         adjustmentIcons[symbolName] = icon
         return icon
     }
@@ -1509,12 +1521,12 @@ extension ImageLayer {
     /// The layer's size on the canvas and, once it's scaled, by how much, for its row. A photo shrunk to 5% keeps
     /// every one of its pixels; the percentage says so, where the size alone reads as if it had been resampled small.
     var sizeLabel: String {
-        let text = "\(Int(size.width.rounded())) × \(Int(size.height.rounded())) px"
+        let text = L10n.format("%ld × %ld px", Int(size.width.rounded()), Int(size.height.rounded()))
         guard let pixels = asset?.image.width, pixels > 0 else { return text }
         // Measured across the width, as the Transform bar's Scale field is.
         let percent = Double(size.width) / Double(pixels) * 100
         guard abs(percent - 100) >= 0.05 else { return text }
-        return text + " · " + percent.formatted(.number.precision(.fractionLength(0...1))) + "%"
+        return L10n.format("%@ · %@%%", text, percent.formatted(.number.precision(.fractionLength(0...1)).locale(LanguageSettings.shared.locale)))
     }
 
     /// The tag after the size of an animated GIF layer, or of a layer keeping 16 bits a channel or light brighter than

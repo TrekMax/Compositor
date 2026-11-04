@@ -120,8 +120,8 @@ struct LayersHeader: View {
                 searching.toggle()
             } label: { headerIcon(searching ? "xmark" : "magnifyingglass") }
                 .buttonStyle(.plain)
-                .help(searching ? "Close the search" : "Search layers by name")
-                .accessibilityLabel(searching ? "Close search" : "Search layers")
+                .help(L10n.text(searching ? "Close the search" : "Search layers by name"))
+                .accessibilityLabel(L10n.text(searching ? "Close search" : "Search layers"))
                 .accessibilityIdentifier("layerSearchButton")
             Button { isPresentingFilter.toggle() } label: {
                 headerIcon("line.3.horizontal.decrease", active: !session.layerTypeFilter.isEmpty)
@@ -194,6 +194,7 @@ private struct LayerSearchField: View {
 
 /// The field itself: plain text, no bezel, no focus ring and no clear button.
 private struct PlainSearchText: NSViewRepresentable {
+    @Environment(\.locale) private var locale
     @Binding var text: String
     var end: () -> Void
 
@@ -204,7 +205,8 @@ private struct PlainSearchText: NSViewRepresentable {
         field.drawsBackground = false
         field.focusRingType = .none
         field.font = .systemFont(ofSize: NSFont.systemFontSize)
-        field.placeholderString = "Search Layers"
+        field.placeholderString = L10n.text("Search Layers")
+        field.setAccessibilityLabel(L10n.text("Search Layers"))
         field.cell?.usesSingleLineMode = true
         field.cell?.isScrollable = true
         field.delegate = context.coordinator
@@ -214,6 +216,9 @@ private struct PlainSearchText: NSViewRepresentable {
     }
 
     func updateNSView(_ field: NSTextField, context: Context) {
+        _ = locale
+        field.placeholderString = L10n.text("Search Layers")
+        field.setAccessibilityLabel(L10n.text("Search Layers"))
         // Only when they differ: writing the string back mid-edit would move the insertion point.
         if field.stringValue != text { field.stringValue = text }
     }

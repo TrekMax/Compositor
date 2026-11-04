@@ -34,10 +34,10 @@ struct GIFTimeline: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!canPlay)
-                .help(isPlaying ? "Pause" : "Play")
+                .help(L10n.text(isPlaying ? "Pause" : "Play"))
                 // The delay as a menu of common ones, as the Layers panel's adjustment button offers its kinds.
                 Menu { delayMenu } label: {
-                    Text(timing.mode == .uniform ? "\(Int(delay.rounded()))ms" : originalDelays(spaced: false))
+                    Text(timing.mode == .uniform ? L10n.format("%@ms", String(Int(delay.rounded()))) : originalDelays(spaced: false))
                         .font(.system(size: 13)).foregroundStyle(.secondary)
                 }
                 .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
@@ -106,12 +106,12 @@ struct GIFTimeline: View {
             Button("Delete Frame") { Task { await onDeleteFrame(frame.index) } }.disabled(!canEditFrames || frames.count < 2)
         }
         .id(frame.index)
-        .accessibilityLabel("Frame \(number)")
+        .accessibilityLabel(L10n.format("Frame %ld", number))
     }
 
     /// Every frame for the same time, from a fast 20 ms up to a second, or each for the GIF's own.
     @ViewBuilder private var delayMenu: some View {
-        Toggle("\(originalDelays()) · Original", isOn: Binding(get: { timing.mode != .uniform }, set: { on in
+        Toggle(L10n.format("%@ · Original", originalDelays()), isOn: Binding(get: { timing.mode != .uniform }, set: { on in
             guard on else { return }
             var original = timing
             original.mode = .perFrame
@@ -119,7 +119,7 @@ struct GIFTimeline: View {
         }))
         Divider()
         ForEach([20, 33, 40, 50, 67, 80, 100, 125, 150, 200, 250, 500, 1000], id: \.self) { milliseconds in
-            Toggle("\(milliseconds) ms · \(fps(milliseconds)) fps", isOn: Binding(
+            Toggle(L10n.format("%ld ms · %@ fps", milliseconds, fps(milliseconds)), isOn: Binding(
                 get: { timing.mode == .uniform && Int(delay.rounded()) == milliseconds },
                 set: { if $0 { setDelay(Double(milliseconds)) } }))
         }
@@ -130,11 +130,11 @@ struct GIFTimeline: View {
     private func originalDelays(spaced: Bool = true) -> String {
         let delays = frames.map { Int(((timing.frameDelays[$0.index] ?? $0.duration) * 1000).rounded()) }
         guard let shortest = delays.min(), let longest = delays.max() else { return "" }
-        return (shortest == longest ? "\(shortest)" : "\(shortest)–\(longest)") + (spaced ? " ms" : "ms")
+        return L10n.format(spaced ? "%@ ms" : "%@ms", shortest == longest ? "\(shortest)" : "\(shortest)–\(longest)")
     }
 
     private func fps(_ milliseconds: Int) -> String {
-        (1000 / Double(milliseconds)).formatted(.number.precision(.fractionLength(0...1)))
+        (1000 / Double(milliseconds)).formatted(.number.precision(.fractionLength(0...1)).locale(LanguageSettings.shared.locale))
     }
 
     /// One delay for every frame, kept within what GIF can store.

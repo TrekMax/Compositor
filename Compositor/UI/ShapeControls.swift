@@ -42,7 +42,7 @@ struct ShapeControls: View {
                     Text("Style")
                     Picker("Style", selection: $session.shapeLineStyle) {
                         ForEach(ShapeLineStyle.allCases, id: \.self) { style in
-                            Image(nsImage: LineSample.style(style)).accessibilityLabel(style.rawValue).tag(style)
+                            Image(nsImage: LineSample.style(style)).accessibilityLabel(L10n.text(style.rawValue)).tag(style)
                         }
                     }
                     .pickerStyle(.menu).labelsHidden().fixedSize()
@@ -52,7 +52,7 @@ struct ShapeControls: View {
                     Text("Cap")
                     Picker("Cap", selection: $session.shapeLineCap) {
                         ForEach(ShapeLineCap.allCases, id: \.self) { cap in
-                            Label { Text(cap.rawValue) } icon: { Image(nsImage: LineSample.cap(cap)) }.tag(cap)
+                            Label { Text(L10n.text(cap.rawValue)) } icon: { Image(nsImage: LineSample.cap(cap)) }.tag(cap)
                         }
                     }
                     .pickerStyle(.menu).labelsHidden().fixedSize()
@@ -78,9 +78,9 @@ struct ShapeControls: View {
                     .toggleStyle(.checkbox)
                     .fixedSize()
                     .disabled(session.shapeCornerRadius <= 0)
-                    .help(session.shapeCornerRadius <= 0
+                    .help(L10n.text(session.shapeCornerRadius <= 0
                           ? "Set a radius above 0 to use smooth corners."
-                          : "Use smooth squircle corners at 60% smoothing, matching Figma's iOS setting")
+                          : "Use smooth squircle corners at 60% smoothing, matching Figma's iOS setting"))
             }
             Spacer(minLength: 0)
         }

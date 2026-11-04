@@ -40,6 +40,8 @@ final class FontListPanel: NSPanel, NSTableViewDataSource, NSTableViewDelegate, 
         backgroundColor = .clear
         hasShadow = true
         build()
+        NotificationCenter.default.addObserver(self, selector: #selector(updateLocalization),
+                                               name: .applicationLanguageDidChange, object: nil)
     }
 
     override var canBecomeKey: Bool { true }
@@ -79,7 +81,7 @@ final class FontListPanel: NSPanel, NSTableViewDataSource, NSTableViewDelegate, 
         search.drawsBackground = false
         search.focusRingType = .none
         search.font = .systemFont(ofSize: NSFont.systemFontSize)
-        search.placeholderString = "Search Fonts"
+        search.placeholderString = L10n.text("Search Fonts")
         search.cell?.usesSingleLineMode = true
         search.cell?.isScrollable = true
         search.delegate = self
@@ -87,7 +89,7 @@ final class FontListPanel: NSPanel, NSTableViewDataSource, NSTableViewDelegate, 
         search.frame = NSRect(x: 30, y: ((box.bounds.height - height) / 2).rounded(), width: box.bounds.width - 56, height: height)
         search.autoresizingMask = [.width, .minYMargin, .maxYMargin]
         box.addSubview(search)
-        clear.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "Clear search")
+        clear.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: nil)
         clear.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular)
         clear.contentTintColor = .secondaryLabelColor
         clear.isBordered = false
@@ -128,6 +130,13 @@ final class FontListPanel: NSPanel, NSTableViewDataSource, NSTableViewDelegate, 
         scroll.autohidesScrollers = true
         background.addSubview(scroll)
         column.width = scroll.contentSize.width
+        updateLocalization()
+    }
+
+    @objc private func updateLocalization() {
+        search.placeholderString = L10n.text("Search Fonts")
+        search.setAccessibilityLabel(L10n.text("Search Fonts"))
+        clear.setAccessibilityLabel(L10n.text("Clear search"))
     }
 
     /// Opens below `rect` (the font control, in `window`'s coordinates), or above it when there's no room below, with

@@ -45,7 +45,7 @@ struct CropControls: View {
                     }.padding(16).frame(width: 280)
                 }
             if let rect = session.cropRect {
-                Text("\(Int(rect.width)) × \(Int(rect.height)) px").monospacedDigit()
+                Text(L10n.format("%ld × %ld px", Int(rect.width), Int(rect.height))).monospacedDigit()
             }
             Spacer()
             Button("Cancel") { session.cancelCrop() }.disabled(session.cropRect == nil)

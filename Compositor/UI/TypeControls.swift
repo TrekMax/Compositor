@@ -150,6 +150,7 @@ private struct TypeFontPicker: NSViewRepresentable {
     enum PreviewStep { case show(String), revert, keep }
     var preview: (PreviewStep) -> Void = { _ in }
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.locale) private var locale
 
     func makeCoordinator() -> Coordinator { Coordinator(fontName: $fontName, preview: preview) }
 
@@ -161,7 +162,7 @@ private struct TypeFontPicker: NSViewRepresentable {
         button.cell?.lineBreakMode = .byTruncatingTail
         button.cell?.usesSingleLineMode = true
         button.cell?.alignment = .left
-        button.setAccessibilityLabel("Font")
+        button.setAccessibilityLabel(L10n.text("Font"))
         button.open = { [weak coordinator = context.coordinator] in coordinator?.open() }
         Coordinator.prepareStyledNames()
         context.coordinator.button = button
@@ -169,9 +170,12 @@ private struct TypeFontPicker: NSViewRepresentable {
     }
 
     func updateNSView(_ button: NSPopUpButton, context: Context) {
+        _ = locale
         context.coordinator.fontName = $fontName
         context.coordinator.preview = preview
         button.isEnabled = isEnabled
+        button.setAccessibilityLabel(L10n.text("Font"))
+        if Self.isMultiple(button.item(at: 0)) { button.item(at: 0)?.title = L10n.text(Self.multiple) }
         guard !context.coordinator.isOpen else { return }
         if fontName.isEmpty { Self.showMultiple(in: button); return }
         Self.hideMultiple(in: button)
@@ -185,7 +189,7 @@ private struct TypeFontPicker: NSViewRepresentable {
     private static func isMultiple(_ item: NSMenuItem?) -> Bool { item?.representedObject as? String == multiple }
     static func showMultiple(in button: NSPopUpButton) {
         if !isMultiple(button.item(at: 0)) {
-            let item = NSMenuItem(title: multiple, action: nil, keyEquivalent: "")
+            let item = NSMenuItem(title: L10n.text(multiple), action: nil, keyEquivalent: "")
             item.representedObject = multiple
             button.menu?.insertItem(item, at: 0)
         }

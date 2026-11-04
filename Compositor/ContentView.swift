@@ -316,7 +316,7 @@ struct ContentView: View {
             switch result {
             case .success(let urls): Task { await session.importImages(urls) }
             case .failure(let error):
-                if (error as NSError).code != NSUserCancelledError { session.importError = error.localizedDescription }
+                if (error as NSError).code != NSUserCancelledError { session.importError = L10n.errorDescription(error) }
             }
         }
         .alert("Import couldn’t finish", isPresented: Binding(
@@ -349,9 +349,9 @@ struct ContentView: View {
                     .frame(width: 62, alignment: .leading).accessibilityIdentifier("zoomStatus")
                 Text("\(document.width) × \(document.height) px").accessibilityIdentifier("canvasDimensions")
                 if let draft = session.shapeDraft, let size = session.dragOutSize {
-                    Text("\(draft.kind == .line ? "Line" : "Shape") \(size.text)").accessibilityIdentifier("shapeDimensions")
+                    Text(L10n.format(draft.kind == .line ? "Line %@" : "Shape %@", size.text)).accessibilityIdentifier("shapeDimensions")
                 } else if let size = session.selectionSize {
-                    Text("Selection \(size.width) × \(size.height) px").accessibilityIdentifier("selectionDimensions")
+                    Text(L10n.format("Selection %lld × %lld px", size.width, size.height)).accessibilityIdentifier("selectionDimensions")
                 }
                 Text("sRGB · Transparent")
             } else { Text("Ready when you are") }

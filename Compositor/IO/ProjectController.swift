@@ -80,7 +80,7 @@ final class ProjectController {
             panel.allowedContentTypes = [.png]
             panel.canCreateDirectories = true
             panel.isExtensionHidden = false
-            panel.title = "Export Layer as PNG"
+            panel.title = L10n.text("Export Layer as PNG")
             panel.nameFieldStringValue = names[0]
             guard await run(panel), let url = panel.url else { return }
             urls = [url]
@@ -90,19 +90,19 @@ final class ProjectController {
             panel.canChooseDirectories = true
             panel.canChooseFiles = false
             panel.canCreateDirectories = true
-            panel.title = "Export \(layers.count) Layers as PNGs"
-            panel.message = "Choose a folder for the layers’ PNGs."
-            panel.prompt = "Export"
+            panel.title = L10n.format("Export %lld Layers as PNGs", layers.count)
+            panel.message = L10n.text("Choose a folder for the layers’ PNGs.")
+            panel.prompt = L10n.text("Export")
             guard await run(panel), let url = panel.url else { return }
             urls = names.map { url.appendingPathComponent($0) }
             folder = url
             let existing = urls.filter { FileManager.default.fileExists(atPath: $0.path) }
             if !existing.isEmpty {
                 let alert = NSAlert()
-                alert.messageText = existing.count == 1 ? "“\(existing[0].lastPathComponent)” already exists. Replace it?"
-                    : "\(existing.count) of these files already exist in “\(url.lastPathComponent)”. Replace them?"
-                alert.addButton(withTitle: "Replace")
-                alert.addButton(withTitle: "Cancel")
+                alert.messageText = existing.count == 1 ? L10n.format("“%@” already exists. Replace it?", existing[0].lastPathComponent)
+                    : L10n.format("%lld of these files already exist in “%@”. Replace them?", existing.count, url.lastPathComponent)
+                alert.addButton(withTitle: L10n.text("Replace"))
+                alert.addButton(withTitle: L10n.text("Cancel"))
                 guard await show(alert) == .alertFirstButtonReturn else { return }
             }
         }
@@ -119,9 +119,9 @@ final class ProjectController {
         } catch { await showError("Couldn’t export layers", error: error); return }
         if !empty.isEmpty {
             let alert = NSAlert()
-            alert.messageText = empty.count == 1 ? "“\(empty[0])” has nothing to export" : "\(empty.count) layers have nothing to export"
-            alert.informativeText = "A layer with no visible pixels, such as an adjustment layer, isn’t saved as a PNG."
-            alert.addButton(withTitle: "OK")
+            alert.messageText = empty.count == 1 ? L10n.format("“%@” has nothing to export", empty[0]) : L10n.format("%lld layers have nothing to export", empty.count)
+            alert.informativeText = L10n.text("A layer with no visible pixels, such as an adjustment layer, isn’t saved as a PNG.")
+            alert.addButton(withTitle: L10n.text("OK"))
             _ = await show(alert)
         }
     }
@@ -185,7 +185,7 @@ final class ProjectController {
         panel.allowedContentTypes = [format.type]
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
-        panel.title = L10n.text("Export " + format.rawValue)
+        panel.title = L10n.format("Export %@", L10n.text(format.rawValue))
         panel.nameFieldStringValue = (session.projectURL?.deletingPathExtension().lastPathComponent ?? "Untitled")
             + "." + (format.type.preferredFilenameExtension ?? format.rawValue.lowercased())
         let response: NSApplication.ModalResponse
@@ -442,7 +442,7 @@ final class ProjectController {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = L10n.text(title)
-        alert.informativeText = L10n.text(error.localizedDescription)
+        alert.informativeText = L10n.errorDescription(error)
         alert.addButton(withTitle: L10n.text("OK"))
         _ = await show(alert)
     }

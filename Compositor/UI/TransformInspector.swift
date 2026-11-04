@@ -138,7 +138,7 @@ struct TransformValueField: View {
                     change(newValue)
                     text = Self.formatted(Double(newValue))
                 }), range: range, step: 1, onEnd: finish)
-            TextField(label, text: $text)
+            TextField(L10n.text(label), text: $text)
                 .textFieldStyle(.roundedBorder).focused($focused)
                 .frame(width: fieldWidth)
                 .accessibilityIdentifier("transform\(label)")
@@ -155,7 +155,7 @@ struct TransformValueField: View {
                                 change(CGFloat(stepped))
                                 text = Self.formatted(stepped)
                             })
-            if let suffix { Text(suffix).font(.caption).foregroundStyle(.secondary) }
+            if let suffix { Text(L10n.text(suffix)).font(.caption).foregroundStyle(.secondary) }
         }
     }
     private func sync() { text = Self.formatted(Double(value)) }
@@ -204,6 +204,6 @@ private struct AlignButton: View {
         Button(action: action) {
             Image(systemName: symbol).font(.system(size: 15)).frame(width: 30, height: 28).contentShape(Rectangle())
         }
-        .buttonStyle(.borderless).help(title).accessibilityLabel(title)
+        .buttonStyle(.borderless).help(L10n.text(title)).accessibilityLabel(L10n.text(title))
     }
 }

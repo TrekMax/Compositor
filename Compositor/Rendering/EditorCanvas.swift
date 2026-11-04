@@ -3,8 +3,12 @@ import SwiftUI
 
 struct EditorCanvas: NSViewRepresentable {
     let session: EditorSession
+    @Environment(\.locale) private var locale
     func makeNSView(context: Context) -> CanvasView { CanvasView(session: session) }
     func updateNSView(_ view: CanvasView, context: Context) {
+        _ = locale
+        view.setAccessibilityLabel(L10n.text("Canvas"))
+        view.inlineTextEditor?.textView.setAccessibilityLabel(L10n.text("Canvas text"))
         view.consumeFocusRequest(session.canvasFocusRequest)
         _ = session.showsTransformControls // observed here so ⌘H redraws the transform box at once
         _ = session.hiddenSelectionEdges // and the selection's outline
@@ -692,7 +696,7 @@ final class CanvasView: NSView {
         clipsToBounds = true
         setAccessibilityElement(true)
         setAccessibilityRole(.image)
-        setAccessibilityLabel("Canvas")
+        setAccessibilityLabel(L10n.text("Canvas"))
         setAccessibilityIdentifier("editorCanvas")
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }

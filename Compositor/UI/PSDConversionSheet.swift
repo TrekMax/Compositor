@@ -3,17 +3,23 @@ import SwiftUI
 struct PSDConversionRequest: Identifiable, Equatable, Sendable {
     let id: UUID
     let title: String
+    let sourceName: String?
     let confirmTitle: String
     var conversions: [PSDConversion]
     /// The file is still being read: the sheet is up so the click feels answered, but it has
     /// nothing to report yet.
     var isReading: Bool
-    init(id: UUID = UUID(), title: String, confirmTitle: String, conversions: [PSDConversion], isReading: Bool = false) {
+    init(id: UUID = UUID(), title: String, confirmTitle: String, conversions: [PSDConversion], isReading: Bool = false, sourceName: String? = nil) {
         self.id = id
+        self.sourceName = sourceName
         self.title = title
         self.confirmTitle = confirmTitle
         self.conversions = conversions
         self.isReading = isReading
+    }
+
+    var displayTitle: String {
+        sourceName.map { L10n.format("Open “%@”?", $0) } ?? L10n.text(title)
     }
 }
 
@@ -23,7 +29,7 @@ struct PSDConversionSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(L10n.text(request.title)).font(.title2.bold())
+            Text(request.displayTitle).font(.title2.bold())
             Text(L10n.text(request.isReading ? "Reading the file to see what needs converting."
                  : "Compositor will convert these Photoshop features. Nothing is applied until you continue."))
                 .foregroundStyle(.secondary)

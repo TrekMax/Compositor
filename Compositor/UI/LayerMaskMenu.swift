@@ -53,15 +53,20 @@ struct ProofBadge: NSViewRepresentable {
 /// A pill at the foot of the canvas naming a way it's showing the document, with a button to leave it. Built in
 /// AppKit, as the canvas under it is, so its button gets its clicks.
 final class CanvasPillView: NSView {
-    var title = "" { didSet { heading.stringValue = title; invalidateIntrinsicContentSize() } }
+    var title = "" { didSet { updateLocalization() } }
     var detail = "" { didSet { name.stringValue = detail; invalidateIntrinsicContentSize() } }
     private let heading = NSTextField(labelWithString: "")
     private let name = NSTextField(labelWithString: "")
     private let stack: NSStackView
+    private let closeButton: NSButton
+    private let closeLabel: String
+    private let closeHelp: String
     private let close: () -> Void
 
     init(symbol: String, closeLabel: String, closeHelp: String, close: @escaping () -> Void) {
         self.close = close
+        self.closeLabel = closeLabel
+        self.closeHelp = closeHelp
         let icon = NSImageView(image: NSImage(systemSymbolName: symbol, accessibilityDescription: nil) ?? NSImage())
         icon.symbolConfiguration = .init(pointSize: 11, weight: .regular)
         let title = heading
@@ -70,11 +75,11 @@ final class CanvasPillView: NSView {
         name.font = .systemFont(ofSize: 12)
         name.textColor = NSColor.white.withAlphaComponent(0.6)
         name.lineBreakMode = .byTruncatingTail
-        let button = NSButton(image: NSImage(systemSymbolName: "xmark", accessibilityDescription: closeLabel) ?? NSImage(),
+        let button = NSButton(image: NSImage(systemSymbolName: "xmark", accessibilityDescription: nil) ?? NSImage(),
                               target: nil, action: nil)
+        closeButton = button
         button.isBordered = false
         button.symbolConfiguration = .init(pointSize: 9, weight: .bold)
-        button.toolTip = closeHelp
         stack = NSStackView(views: [icon, title, name, button])
         stack.spacing = 7
         stack.edgeInsets = NSEdgeInsets(top: 0, left: 11, bottom: 0, right: 8)
@@ -95,9 +100,18 @@ final class CanvasPillView: NSView {
             stack.centerYAnchor.constraint(equalTo: centerYAnchor), heightAnchor.constraint(equalToConstant: 26),
             name.widthAnchor.constraint(lessThanOrEqualToConstant: 220),
         ])
+        updateLocalization()
+        NotificationCenter.default.addObserver(self, selector: #selector(updateLocalization),
+                                               name: .applicationLanguageDidChange, object: nil)
     }
     required init?(coder: NSCoder) { nil }
     override var intrinsicContentSize: NSSize { NSSize(width: stack.fittingSize.width, height: 26) }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    @objc private func updateLocalization() {
+        heading.stringValue = L10n.text(title)
+        closeButton.setAccessibilityLabel(L10n.text(closeLabel))
+        closeButton.toolTip = L10n.text(closeHelp)
+        invalidateIntrinsicContentSize()
+    }
     @objc private func closeClicked() { close() }
 }

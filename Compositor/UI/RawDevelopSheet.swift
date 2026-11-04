@@ -19,7 +19,7 @@ struct RawDevelopSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Develop “\(url.lastPathComponent)”").font(.title2.bold())
+            Text(L10n.format("Develop “%@”", url.lastPathComponent)).font(.title2.bold())
             ZStack {
                 RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.35))
                 if let preview {
@@ -45,17 +45,17 @@ struct RawDevelopSheet: View {
                 slider("Boost", value: $settings.boost, range: 0...1, unit: "", precision: 2)
                 slider("Noise Reduction", value: $settings.noiseReduction, range: 0...1, unit: "", precision: 2)
                     .disabled(!settings.supportsNoiseReduction)
-                    .help(settings.supportsNoiseReduction ? "Smooths grain, at the cost of fine detail"
-                                                          : "Not available for this camera")
+                    .help(L10n.text(settings.supportsNoiseReduction ? "Smooths grain, at the cost of fine detail"
+                                                          : "Not available for this camera"))
                 HStack(spacing: 20) {
                     Toggle("Lens Correction", isOn: $settings.lensCorrection)
                         .disabled(!settings.supportsLensCorrection)
-                        .help(settings.supportsLensCorrection ? "Removes the lens's distortion and vignetting"
-                                                              : "This file has no lens profile")
+                        .help(L10n.text(settings.supportsLensCorrection ? "Removes the lens's distortion and vignetting"
+                                                              : "This file has no lens profile"))
                     Toggle("Highlight Recovery", isOn: $settings.highlightRecovery)
                         .disabled(!settings.supportsHighlightRecovery)
-                        .help(settings.supportsHighlightRecovery ? "Brings back detail in bright areas the camera partly clipped"
-                                                                 : "Not available for this camera")
+                        .help(L10n.text(settings.supportsHighlightRecovery ? "Brings back detail in bright areas the camera partly clipped"
+                                                                 : "Not available for this camera"))
                 }
                 .padding(.leading, 120)
 

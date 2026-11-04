@@ -109,15 +109,15 @@ struct CanvasSizeSheet: View {
                                             .frame(width: 25, height: 25)
                                     }
                                     .tint(index == anchor ? .accentColor : .secondary)
-                                    .help(anchorNames[index]).accessibilityLabel(anchorNames[index])
-                                    .accessibilityValue(index == anchor ? "Selected" : "")
+                                    .help(L10n.text(anchorNames[index])).accessibilityLabel(L10n.text(anchorNames[index]))
+                                    .accessibilityValue(index == anchor ? L10n.text("Selected") : "")
                                 }
                             }
                         }
                     }
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(anchorNames[anchor]).font(.callout.bold())
+                    Text(L10n.text(anchorNames[anchor])).font(.callout.bold())
                     Text("Keeps this point fixed. Artwork is not scaled; cropped content remains outside the canvas.")
                         .font(.callout).foregroundStyle(.secondary)
                 }.padding(.top, 28)

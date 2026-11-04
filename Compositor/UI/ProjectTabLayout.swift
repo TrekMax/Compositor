@@ -26,8 +26,8 @@ struct ProjectTabOverflow: Equatable {
 }
 
 /// "N more tabs", singular for one.
-func projectTabOverflowLabel(for hiddenCount: Int) -> String {
-    hiddenCount == 1 ? "1 more tab" : "\(hiddenCount) more tabs"
+func projectTabOverflowLabel(for hiddenCount: Int, language: AppLanguage? = nil) -> String {
+    L10n.format(hiddenCount == 1 ? "%ld more tab" : "%ld more tabs", hiddenCount, language: language)
 }
 
 /// Lays out the strip left to right: everything shows when it all fits. Otherwise tabs are dropped from the

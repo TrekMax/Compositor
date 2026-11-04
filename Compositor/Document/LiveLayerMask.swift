@@ -106,7 +106,7 @@ extension EditorSession {
         let targets = (document?.layers ?? []).filter { !removed.contains($0.id) && $0.maskSourceID.map(removed.contains) == true }.map(\.id)
         guard !targets.isEmpty else { return false }
         let alert = NSAlert()
-        alert.messageText = ids.count == 1 ? "This layer supplies a live mask" : "These layers supply live masks"
+        alert.messageText = L10n.text(ids.count == 1 ? "This layer supplies a live mask" : "These layers supply live masks")
         alert.informativeText = L10n.text("Bake keeps the current masked appearance in the dependent layers’ pixels. Remove Links reveals their pixels. You can undo either choice.")
         alert.addButton(withTitle: L10n.text("Bake and Delete"))
         alert.addButton(withTitle: L10n.text("Cancel"))

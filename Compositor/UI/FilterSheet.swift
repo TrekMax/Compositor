@@ -367,7 +367,7 @@ struct FilterSheet: View {
         control("Black Level", \.scanlines.blackLevel, range: 0...100, unit: "%", decimals: 0, logarithmic: false)
             .help("How bright the lines are where the picture is black, so they show even over black")
         Picker("Colors", selection: Binding(get: { lines.colors }, set: { new in update { $0.scanlines.colors = new } })) {
-            ForEach(DitherColors.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            ForEach(DitherColors.allCases, id: \.self) { Text(L10n.text($0.rawValue)).tag($0) }
         }
         .fixedSize()
         if lines.colors == .twoColors {
@@ -445,7 +445,7 @@ struct FilterSheet: View {
         ForEach(Array(rim.lights.enumerated()), id: \.element.id) { index, light in
             Divider()
             HStack(spacing: 8) {
-                Text("Light \(index + 1)").font(.headline)
+                Text(L10n.format("Light %lld", index + 1)).font(.headline)
                 Spacer()
                 let color = light.color
                 Button { session.openRimLightColorPicker(index: index) } label: {
@@ -489,7 +489,7 @@ struct FilterSheet: View {
         HStack(spacing: 10) {
             Text("Effect")
             Picker("Effect", selection: Binding(get: { settings.lens.effect }, set: { new in update { $0.lens.effect = new } })) {
-                ForEach(LensEffect.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                ForEach(LensEffect.allCases, id: \.self) { Text(L10n.text($0.rawValue)).tag($0) }
             }
             .labelsHidden().fixedSize()
         }
@@ -553,7 +553,7 @@ struct FilterSheet: View {
             HStack(spacing: 10) {
                 Text("Shape")
                 Picker("Shape", selection: Binding(get: { settings.lens.bokehShape }, set: { new in update { $0.lens.bokehShape = new } })) {
-                    ForEach(BokehShape.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    ForEach(BokehShape.allCases, id: \.self) { Text(L10n.text($0.rawValue)).tag($0) }
                 }
                 .labelsHidden().fixedSize()
                 .help("The aperture's shape: round wide open, a hexagon of blades, an anamorphic oval, or a cat's eye toward the edges")
@@ -595,7 +595,7 @@ struct FilterSheet: View {
                             range: range)
             if let track {
                 CameraRawSlider(value: settings[keyPath: key], range: range, track: track,
-                                help: "\(title). Double-click to reset.",
+                                help: L10n.format("%@. Double-click to reset.", L10n.text(title)),
                                 onChange: { value in update { $0[keyPath: key] = (value * step).rounded() / step } },
                                 onReset: reset)
             } else {
@@ -603,7 +603,7 @@ struct FilterSheet: View {
                                       set: { value in update { $0[keyPath: key] = ((logarithmic ? exp(value) : value) * step).rounded() / step } }),
                        in: logarithmic ? log(range.lowerBound)...log(range.upperBound) : range)
             }
-            TextField(title, value: Binding(get: { settings[keyPath: key] }, set: { value in update { $0[keyPath: key] = value } }),
+            TextField(L10n.text(title), value: Binding(get: { settings[keyPath: key] }, set: { value in update { $0[keyPath: key] = value } }),
                       format: .number.precision(.fractionLength(0...decimals)))
                 .frame(width: 56).textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing)
                 .unitSuffix(unit)
@@ -649,7 +649,7 @@ struct GradientMapControls: View {
                     .contentShape(shape)
             }
             .buttonStyle(.plain)
-            .help("Choose the \(title.lowercased()) color")
+            .help(L10n.format("Choose the %@ color", L10n.text(title).lowercased()))
             .accessibilityLabel("\(title) color")
             Text(L10n.text(title))
         }

@@ -85,7 +85,7 @@ struct ExportAsSheet: View {
     /// A PNG at 16 bits a channel: off by default, it's about twice the size.
     @State private var sixteenBit = false
     @State private var result: Encoded?
-    @State private var error: String?
+    @State private var error: Error?
     @State private var gifProgress: (completed: Int, total: Int)?
     @State private var gifPreviewImage: CGImage?
     @State private var gifPreviewIndex = 0
@@ -113,17 +113,17 @@ struct ExportAsSheet: View {
                         isGIFPreviewPlaying.toggle()
                     } label: { Image(systemName: isGIFPreviewPlaying ? "pause.fill" : "play.fill").foregroundStyle(.white) }
                         .disabled(!isReady)
-                        .help(isGIFPreviewPlaying ? "Pause the animation preview." : "Play the animation preview.")
-                        .accessibilityLabel(isGIFPreviewPlaying ? "Pause animation preview" : "Play animation preview")
+                        .help(L10n.text(isGIFPreviewPlaying ? "Pause the animation preview." : "Play the animation preview."))
+                        .accessibilityLabel(L10n.text(isGIFPreviewPlaying ? "Pause animation preview" : "Play animation preview"))
                 }
                 Button("Fit") { zoom = nil }.disabled(zoom == nil)
                     .help("Show the whole image (⌘0)")
                 Button { zoomBy(1) } label: { Image(systemName: "plus.magnifyingglass") }
                     .disabled(JPEGPreview.step(from: shownZoom, in: 1) == nil)
-                    .help("Zoom in (⌘+), now \(percent). At 100% each pixel of the export is one pixel of the screen")
+                    .help(L10n.format("Zoom in (⌘+), now %@. At 100%% each pixel of the export is one pixel of the screen", percent))
                 Button { zoomBy(-1) } label: { Image(systemName: "minus.magnifyingglass") }
                     .disabled(JPEGPreview.step(from: shownZoom, in: -1) == nil)
-                    .help("Zoom out (⌘−), now \(percent)")
+                    .help(L10n.format("Zoom out (⌘−), now %@", percent))
             }
             .padding(.bottom, -8)
             ZStack {
@@ -198,7 +198,7 @@ struct ExportAsSheet: View {
                 if format == .channelPack {
                     ForEach(Array(ChannelPack.Channel.allCases.enumerated()), id: \.offset) { index, channel in
                         GridRow {
-                            Text(channel.rawValue)
+                            Text(L10n.text(channel.rawValue))
                             channelPicker(index, channel: channel)
                         }
                     }
@@ -238,16 +238,13 @@ struct ExportAsSheet: View {
                 }
             }
             HStack(spacing: 12) {
-                Text(format == .channelPack ? "Each channel from a layer, read as grayscale · PNG"
-                     : format == .gif ? "Up to 256 colors · sRGB" : format == .exr ? "Brighter than white kept · Transparency kept"
-                     : takesCMYK && cmyk ? "CMYK – \(profile?.name ?? "No profile")"
-                     : format == .png || format == .tiff ? "Transparency kept · sRGB" : "sRGB")
+                Text(colorSummary)
                     .foregroundStyle(.secondary)
                 Spacer()
                 if isReady, let result {
                     Text(ByteCountFormatter.string(fromByteCount: Int64(result.data.count), countStyle: .file)).monospacedDigit()
                 } else if error == nil {
-                    Text(format == .gif ? gifProgress.map { "Encoding frame \(min($0.completed + 1, $0.total)) of \($0.total)…" } ?? "Updating…" : "Updating…")
+                    Text(format == .gif ? gifProgress.map { L10n.format("Encoding frame %ld of %ld…", min($0.completed + 1, $0.total), $0.total) } ?? L10n.text("Updating…") : L10n.text("Updating…"))
                         .foregroundStyle(.secondary).monospacedDigit()
                 }
                 Button("Cancel") { DialogColorSwatch.closePicker(session); finish(nil) }.configuredNativeShortcut(.escape)
@@ -260,7 +257,7 @@ struct ExportAsSheet: View {
                     .configuredNativeShortcut(.return)
                     .disabled(!isReady)
             }
-            if let error { Text(error).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true).frame(maxWidth: JPEGPreview.frame.width, alignment: .leading) }
+            if let error { Text(L10n.errorDescription(error)).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true).frame(maxWidth: JPEGPreview.frame.width, alignment: .leading) }
         }
         .padding(24)
         .onAppear {
@@ -333,7 +330,7 @@ struct ExportAsSheet: View {
                 // A newer setting superseded this preview.
             } catch {
                 guard !Task.isCancelled else { return }
-                self.error = error.localizedDescription
+                self.error = error
             }
         }
         .task(id: GIFPreviewRequest(resultID: result?.id, isPlaying: isGIFPreviewPlaying, isReady: isReady)) {
@@ -351,7 +348,7 @@ struct ExportAsSheet: View {
             } catch is CancellationError {
                 // A setting changed, playback paused, or the dialog closed.
             } catch {
-                self.error = error.localizedDescription
+                self.error = error
             }
         }
     }
@@ -367,11 +364,18 @@ struct ExportAsSheet: View {
         return snapshot.gifExportLayers.contains { (snapshot.animations[$0.id]?.frames.count ?? 0) > 1 }
     }
     private var gifSummary: String {
-        guard !(snapshot?.gifExportLayers ?? []).isEmpty else { return "1 frame · Still canvas" }
+        guard !(snapshot?.gifExportLayers ?? []).isEmpty else { return L10n.text("1 frame · Still canvas") }
         guard let schedule = gifSchedule else { return "—" }
-        let count = "\(schedule.frames.count) \(schedule.frames.count == 1 ? "frame" : "frames")"
         let durations = schedule.durations
-        return "\(count) · \(durations.reduce(0, +).formatted(.number.precision(.fractionLength(0...2)))) s"
+        let duration = durations.reduce(0, +).formatted(.number.precision(.fractionLength(0...2)).locale(LanguageSettings.shared.locale))
+        return L10n.format(schedule.frames.count == 1 ? "%ld frame · %@ s" : "%ld frames · %@ s", schedule.frames.count, duration)
+    }
+
+    private var colorSummary: String {
+        if takesCMYK && cmyk { return L10n.format("CMYK – %@", profile?.name ?? L10n.text("No profile")) }
+        return L10n.text(format == .channelPack ? "Each channel from a layer, read as grayscale · PNG"
+                        : format == .gif ? "Up to 256 colors · sRGB" : format == .exr ? "Brighter than white kept · Transparency kept"
+                        : format == .png || format == .tiff ? "Transparency kept · sRGB" : "sRGB")
     }
 
     /// RGB or CMYK: one small menu, as few need CMYK. The profile CMYK goes through is View › CMYK › Profile's, named in
@@ -388,10 +392,10 @@ struct ExportAsSheet: View {
     private func loadProfile() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [UTType(filenameExtension: "icc") ?? .data, UTType(filenameExtension: "icm") ?? .data]
-        panel.message = "Choose a CMYK ICC profile, such as the one your printer gave you"
+        panel.message = L10n.text("Choose a CMYK ICC profile, such as the one your printer gave you")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do { session.proofProfile = try CMYK.load(url) }
-        catch { self.error = error.localizedDescription }
+        catch { self.error = error }
     }
 
     /// Animation formats, TIFF, PDF, and EXR with an HDR layer: a menu beside PNG and JPEG, blue with the chosen one's name while it's chosen,
@@ -399,21 +403,23 @@ struct ExportAsSheet: View {
     @ViewBuilder private var moreFormats: some View {
         let others = formats.filter { $0 != .png && $0 != .jpeg }
         let chosen = others.contains(format)
-        let menu = Menu(chosen ? format.rawValue : "More") {
+        let menu = Menu(L10n.text(chosen ? format.rawValue : "More")) {
             Picker("More formats", selection: $format) {
-                ForEach(others, id: \.self) { Text($0.rawValue).tag($0) }
+                ForEach(others, id: \.self) { Text(L10n.text($0.rawValue)).tag($0) }
             }
             .pickerStyle(.inline).labelsHidden()
         }
         .menuStyle(.button).fixedSize()
-        .help("Other formats: TIFF, PDF and GIF\(others.contains(.exr) ? ", EXR to keep light brighter than white" : ""), and Channel Pack for game textures")
+        .help(L10n.text(others.contains(.exr)
+                       ? "Other formats: TIFF, PDF and GIF, EXR to keep light brighter than white, and Channel Pack for game textures"
+                       : "Other formats: TIFF, PDF and GIF, and Channel Pack for game textures"))
         if chosen { menu.buttonStyle(.borderedProminent) } else { menu.buttonStyle(.bordered) }
     }
 
     /// A channel's source: one of the document's layers or groups, top first, or solid black or white.
     private func channelPicker(_ index: Int, channel: ChannelPack.Channel) -> some View {
         let layers = snapshot?.manifest.layers ?? []
-        return Picker(channel.rawValue, selection: $channels[index]) {
+        return Picker(L10n.text(channel.rawValue), selection: $channels[index]) {
             Text("Black").tag(ChannelPack.Source.black)
             Text("White").tag(ChannelPack.Source.white)
             Divider()
@@ -422,7 +428,7 @@ struct ExportAsSheet: View {
             }
         }
         .labelsHidden().frame(width: 260)
-        .help("What fills the \(channel.rawValue.lowercased()) channel: a layer or group read as grayscale, or solid black or white")
+        .help(L10n.format("What fills the %@ channel: a layer or group read as grayscale, or solid black or white", L10n.text(channel.rawValue).lowercased()))
     }
 
     private func sizeField(_ value: Int, set: @escaping (Int) -> Void) -> some View {
@@ -444,8 +450,8 @@ struct ExportAsSheet: View {
     /// The PDF page: the export's pixels at the document's resolution.
     private var pageSize: String {
         let dpi = raster.resolution > 0 ? raster.resolution : 72
-        let inches = { (pixels: Int) in (Double(pixels) / dpi).formatted(.number.precision(.fractionLength(0...2))) }
-        return "\(inches(width)) × \(inches(height)) in at \(Int(dpi.rounded())) DPI"
+        let inches = { (pixels: Int) in (Double(pixels) / dpi).formatted(.number.precision(.fractionLength(0...2)).locale(LanguageSettings.shared.locale)) }
+        return L10n.format("%@ × %@ in at %ld DPI", inches(width), inches(height), Int(dpi.rounded()))
     }
     private var percent: String { "\(Int((shownZoom * 100).rounded()))%" }
     private func zoomBy(_ direction: Int) {

@@ -1,5 +1,7 @@
 # Compositor
 
+English | [简体中文](README.zh-CN.md)
+
 Adobe Photoshop costs too much and tools like GIMP don’t feel familiar enough for me to stay in flow. That’s why I built Compositor.
 
 The goal was to create a full-featured image editor that is completely free and open source. I used to use Photoshop for compositing and post-processing, so Compositor is built around that workflow - with the tools needed to create a pixel-perfect final image.
@@ -7,6 +9,8 @@ The goal was to create a full-featured image editor that is completely free and 
 Because it’s open source, you can download the Xcode project and add, remove, or modify any feature to fit your workflow.
 
 ## Installation
+
+The download links and Homebrew command below install upstream releases. To use this fork's Simplified Chinese interface and other changes, [build this repository from source](#building).
 
 ### Download
 Get Compositor from [robbietilton.com/compositor](https://robbietilton.com/compositor), or download the latest release directly from [GitHub Releases](https://github.com/robbietilton/Compositor/releases/latest).
@@ -92,7 +96,9 @@ brew install --cask robbietilton-compositor
 
 ## Translations
 
-Compositor is English only for now, and translation pull requests aren't being accepted. It's maintained by one person, every new string would need translating from then on, and translations in languages I don't read can't be reviewed. I'll revisit this once the app settles; until then, please don't open localization PRs.
+This fork supports **English**, **Simplified Chinese**, and **Follow System**. Choose a language on first launch, or change it in **Compositor → Settings… → General** (⌘,). Changes take effect immediately and are saved automatically.
+
+Translation maintenance is documented in [Interface languages](docs/localization.md). The upstream README's policy of not accepting localization pull requests applies to the upstream project; this fork maintains its translations separately.
 
 ## Other platforms
 
@@ -108,6 +114,8 @@ More are listed in [#23 (Windows)](https://github.com/robbietilton/Compositor/is
 
 Open `Compositor.xcodeproj` and run the **Compositor** scheme.
 
+See [Source structure](docs/source-structure.md) for the editor, UI, rendering and file IO layout.
+
 ## Releasing
 
 `scripts/release.sh` builds a Release version, signs it with Developer ID, notarizes and staples it, and packages it into `dist/Compositor-<version>.dmg`.
@@ -117,6 +125,8 @@ It needs, all kept outside this repository:
 - a **Developer ID Application** certificate in the login keychain
 - notarization credentials saved with `xcrun notarytool store-credentials "compositor-notary" …`
 - [`create-dmg`](https://github.com/create-dmg/create-dmg) (`brew install create-dmg`)
+
+For your own distribution, configure your signing team in `scripts/release.sh` and `scripts/ExportOptions.plist`, and use your own certificate and notarization credentials.
 
 ## License
 

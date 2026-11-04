@@ -5,7 +5,7 @@
 **Tech Stack:** SwiftUI, AppKit, Core Graphics, existing C flood fill, Swift Testing.
 
 - [x] Write PaintBucketTests for output pixels, connected/global matching, opacity, selection, masks, transforms, history and invalid points; observe missing implementation failures.
-- [x] Add Document/PaintBucket.swift. Snapshot the target/options; sample layer or mask, match off-main, fill a clipped region, and use commitRasterEdit for undo.
+- [x] Add Editor/Tools/PaintBucket.swift. Snapshot the target/options; sample layer or mask, match off-main, fill a clipped region, and use commitRasterEdit for undo.
 - [x] Extend BrushStroke.fill with optional region and opacity; bound affected tile allocation by the region as well as the canvas and selection.
 - [x] Register NavigationTool.paintBucket, a bucket icon/label, Shift-G, numeric opacity shortcuts, top controls and localized status/help strings. Preserve G and existing tools.
 - [x] Run focused tests, full CompositorTests, Release build, resource parity and whitespace checks. Inspect the toolbar and controls in a development build.

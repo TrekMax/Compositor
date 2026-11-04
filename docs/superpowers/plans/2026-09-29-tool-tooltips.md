@@ -13,8 +13,8 @@ Default enabled; delay 0.5 seconds, range 0...3 seconds. Only tool buttons are a
 ## Steps
 
 - [x] Add `CompositorTests/ToolTipTests.swift`: isolated defaults round-trip for off/zero delay, clamped and malformed delays; host a real tracking view to check delay, exit, click, preference changes and mouse pass-through. Run focused tests and observe missing implementation failures.
-- [x] Add `Compositor/UI/ToolTipSettings.swift`: shared observable settings, `setEnabled(_:)`, `setDelay(_:)`, bounds validation and persistence.
-- [x] Add `Compositor/UI/ToolTip.swift`: tracking view + cancellable delayed presentation + screen-clamped nonactivating panel; cancellation on input and view/window changes. `configure(text:enabled:delay:)` applies live configuration.
+- [x] Add `Compositor/UI/Settings/ToolTipSettings.swift`: shared observable settings, `setEnabled(_:)`, `setDelay(_:)`, bounds validation and persistence.
+- [x] Add `Compositor/UI/Shared/ToolTip.swift`: tracking view + cancellable delayed presentation + screen-clamped nonactivating panel; cancellation on input and view/window changes. `configure(text:enabled:delay:)` applies live configuration.
 - [x] Replace `.help` on tool buttons in `ContentView.swift` with the tracking background; bind settings and localized `tool.label` explicitly across the separate hosting root.
 - [x] Add a Tool Tips section to `ApplicationSettings.swift`, with toggle and delay slider, translated labels, automatic saving and disabled delay control when hints are off.
 - [x] Add matching English/Simplified Chinese resource strings, run focused and full CompositorTests, resource parity and `git diff --check`.

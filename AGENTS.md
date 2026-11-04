@@ -8,7 +8,7 @@ If you've been asked to make or change an image in a `.comp` project, you don't 
 
 ## Working on the app itself
 
-- Source layout: [docs/source-structure.md](docs/source-structure.md). Editing logic lives in `Compositor/Editor`, grouped by responsibility; UI, rendering, and file IO have their own source areas.
+- Source layout: [docs/source-structure.md](docs/source-structure.md). Editing logic lives in `Compositor/Editor` and presentation in `Compositor/UI`, both grouped by responsibility; rendering and file IO have their own source areas.
 - Build: open `Compositor.xcodeproj` and run the **Compositor** scheme, or `xcodebuild -project Compositor.xcodeproj -scheme Compositor -destination 'platform=macOS' build`.
 - Tests: the `CompositorTests` target (`xcodebuild ... test -only-testing:CompositorTests`). CI runs these on every push.
 - Match the surrounding code: its naming, its comment style and density.

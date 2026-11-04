@@ -46,6 +46,7 @@ jobs:
             pattern+='|^Compositor/Editor/(Adjustments/|Filters/|Layers/LayerAdjustment\.swift$)'
             pattern+='|^Compositor/Rendering/(AdjustPixels|LevelsPixels|DitherPixels|LensPixels|NoisePixels|GPUNoise|AdjustmentSurface)'
             pattern+='|^Compositor/UI/(CameraRaw|Curves|FilterSheet|HueSaturation|Levels)'
+            pattern+='|^Compositor/UI/(Adjustments/|Filters/)'
             pattern+='|^CompositorTests/(CameraRaw|HueSaturation|ImageAdjustment|Levels|Filter|Scanlines|FinishingFilter)'
             pattern+='|^Compositor\.xcodeproj/|^\.github/workflows/verify\.yml|^scripts/ci-tests\.sh'
             grep -qE "$pattern" changed.txt || filters=false

@@ -21,6 +21,27 @@ The groups organize source files within the existing app module; they are not se
 
 `ImageLayer`, `CanvasDocument`, and `NavigationTool` have their own files. Their type names and access levels are unchanged; `EditorSession.swift` owns the editing session rather than also declaring those shared types.
 
+## UI groups
+
+`Compositor/UI` contains presentation and input integration. It follows the editor's feature groups where useful, with separate areas for application settings and reusable UI infrastructure. SwiftUI and AppKit implementations of the same feature stay together.
+
+| Directory | Responsibility |
+| --- | --- |
+| `Workspace` | Project tabs, their layout and window integration. |
+| `Canvas` | Rulers, navigator and thumbnails, new canvas, size, trim and grid dialogs. |
+| `Layers` | Layer list, search, blend mode, masks, effects, transform inspector and GIF timeline. |
+| `Tools` | Tool rail and headers, individual tool controls, palette/color picker and font selection. |
+| `Selection` | Lasso and color-range controls. |
+| `Adjustments` | Curves, Hue/Saturation and Levels panels; `CameraRaw` keeps its controls and native slider together. |
+| `Filters` | Filter panels and previews. |
+| `ImportExport` | Export preview/options and PSD/RAW import dialogs. |
+| `Settings` | Application settings, language selection and tooltip preferences. |
+| `Commands` | Command search, shortcut definitions, saved assignments and shortcut UI integration. |
+| `Input` | Modifier keys, keyboard-layout translation and tablet-pen detection. |
+| `Shared` | Reusable scrolling, numeric/slider interaction, tooltips and floating-panel hosting. |
+
+UI-specific layout values, such as the project tab layout, belong beside their views even when they do not conform to `View`. These source groups do not change the Swift module or dependency boundaries.
+
 ## Neighboring source areas
 
 - `UI`: SwiftUI/AppKit controls, panels, menus, shortcuts and other presentation code.
@@ -37,4 +58,4 @@ Place new files beside the feature they serve. Keep pixel kernels and GPU implem
 
 The Xcode project uses file-system-synchronized roots for the app and tests. Swift files under `Compositor` are discovered automatically, including files in nested editor groups; ordinary source moves do not need entries in `project.pbxproj`.
 
-When moving filter-related files, also check the changed-path rules in `.github/workflows/verify.yml`. Those rules decide whether the filter test suites run. The legacy `Document` pattern remains to recognize deleted old paths and comparisons against older branches.
+When moving filter-related files, also check the changed-path rules in `.github/workflows/verify.yml`. Those rules decide whether the filter test suites run. The legacy `Document` and flat `UI` patterns remain to recognize deleted old paths and comparisons against older branches.

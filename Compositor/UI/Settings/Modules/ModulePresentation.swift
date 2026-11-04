@@ -18,6 +18,26 @@ struct ModulePresentation {
         guard state.phase == .downloading, let total = state.totalBytes, total > 0 else { return nil }
         return min(1, max(0, Double(state.receivedBytes) / Double(total)))
     }
+    var downloadPercent: Int? {
+        guard let fraction = downloadFraction else { return nil }
+        // Rounding must not announce completion before all bytes have arrived.
+        return fraction < 1 ? min(99, Int((fraction * 100).rounded())) : 100
+    }
+
+    static func installedBytes(in states: [ModuleState]) -> Int64 {
+        states.filter(\.isInstalled).reduce(0) { $0 + $1.installedBytes }
+    }
+
+    static func revealURL(for root: URL) -> URL {
+        var location = root
+        while !FileManager.default.fileExists(atPath: location.path) {
+            let parent = location.deletingLastPathComponent()
+            guard parent.path != location.path else { break }
+            location = parent
+        }
+        return location
+    }
+
     var status: String {
         switch state.phase {
         case .notInstalled: "Not installed"

@@ -81,6 +81,15 @@ import Testing
         #expect(L10n.format("Save changes to %@?", "My photo", language: .simplifiedChinese) == "要保存对“My photo”的更改吗？")
     }
 
+    @Test func moduleSummaryAndPercentageLabelsUseBothLanguages() {
+        #expect(L10n.text("Show in Finder", language: .simplifiedChinese) == "在访达中显示")
+        #expect(L10n.text("Total installed size", language: .simplifiedChinese) == "已安装总大小")
+        for language in [AppLanguage.english, .simplifiedChinese] {
+            #expect(L10n.format("%lld%%", Int64(25), language: language) == "25%")
+            #expect(L10n.format("%lld%%", Int64(100), language: language) == "100%")
+        }
+    }
+
     @Test func moduleStagesAndErrorsHaveLocalizedPresentation() throws {
         let english = try catalog(.english), chinese = try catalog(.simplifiedChinese)
         let phases: [ModuleState.Phase] = [.notInstalled, .migrating, .downloading, .verifying, .compiling,

@@ -14,6 +14,42 @@ import Testing
         #expect(routing.selectedCategory == .modules)
     }
 
+    @Test func installedSizeSummaryCountsDisabledInstallsButNotAbsentStaleSizes() {
+        #expect(ModulePresentation.installedBytes(in: []) == 0)
+        let installed = ModuleState(phase: .installed, isInstalled: true, installedBytes: 100)
+        let disabled = ModuleState(phase: .disabled, isInstalled: true, isEnabled: false, installedBytes: 200)
+        let absent = ModuleState(phase: .notInstalled, installedBytes: 999)
+        #expect(ModulePresentation.installedBytes(in: [installed, disabled, absent]) == 300)
+    }
+
+    @Test func finderRevealUsesTheActualRootOrExistingParentWithoutCreatingStorage() throws {
+        let parent = FileManager.default.temporaryDirectory.appendingPathComponent("ModuleReveal-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: parent) }
+        let root = parent.appendingPathComponent("Compositor/Modules")
+        #expect(ModulePresentation.revealURL(for: root).path == parent.path)
+        #expect(!FileManager.default.fileExists(atPath: root.path))
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        #expect(ModulePresentation.revealURL(for: root).path == root.path)
+    }
+
+    @Test func visiblePercentageRequiresAKnownDownloadTotalAndNeverFinishesEarly() {
+        var state = ModuleState(phase: .downloading, receivedBytes: 25, totalBytes: 100)
+        #expect(ModulePresentation(state: state).downloadPercent == 25)
+        state.receivedBytes = 999
+        state.totalBytes = 1000
+        #expect(ModulePresentation(state: state).downloadPercent == 99)
+        state.receivedBytes = 1000
+        #expect(ModulePresentation(state: state).downloadPercent == 100)
+        state.totalBytes = nil
+        #expect(ModulePresentation(state: state).downloadPercent == nil)
+        state.totalBytes = 1000
+        for phase in [ModuleState.Phase.verifying, .compiling] {
+            state.phase = phase
+            #expect(ModulePresentation(state: state).downloadPercent == nil)
+        }
+    }
+
     @Test func downloadingUsesReceivedBytesAndNeverInventsUnknownProgress() {
         var state = ModuleState(phase: .downloading, receivedBytes: 25, totalBytes: 100)
         #expect(ModulePresentation(state: state).downloadFraction == 0.25)

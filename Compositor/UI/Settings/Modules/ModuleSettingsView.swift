@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct ModuleSettingsView: View {
     @Bindable var manager: ModuleManager
@@ -12,6 +13,16 @@ struct ModuleSettingsView: View {
                     Text(verbatim: manager.root.path).textSelection(.enabled)
                         .accessibilityIdentifier("modulesStoragePath")
                 }
+                Button("Show in Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting([ModulePresentation.revealURL(for: manager.root)])
+                }
+                .help("If the module folder does not exist yet, Finder shows its nearest existing parent.")
+                .accessibilityIdentifier("modulesShowInFinder")
+                LabeledContent("Total installed size", value: moduleByteCount(ModulePresentation.installedBytes(
+                    in: manager.descriptors.map { manager.state(for: $0.id) })))
+                    .accessibilityIdentifier("modulesTotalInstalledSize")
+                Text("Total counts installed module content, including disabled modules.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             ForEach(manager.descriptors) { descriptor in
                 ModuleSettingsRow(manager: manager, descriptor: descriptor)
@@ -44,9 +55,9 @@ private struct ModuleSettingsRow: View {
             .accessibilityIdentifier("moduleEnabled-\(descriptor.id)")
             LabeledContent("Version", value: descriptor.version)
             LabeledContent("Publisher", value: descriptor.publisher)
-            LabeledContent("Download size", value: byteCount(descriptor.downloadBytes))
+            LabeledContent("Download size", value: moduleByteCount(descriptor.downloadBytes))
                 .accessibilityIdentifier("moduleDownloadSize-\(descriptor.id)")
-            LabeledContent("Installed size", value: state.isInstalled ? byteCount(state.installedBytes) : L10n.text("Not installed"))
+            LabeledContent("Installed size", value: state.isInstalled ? moduleByteCount(state.installedBytes) : L10n.text("Not installed"))
                 .accessibilityIdentifier("moduleInstalledSize-\(descriptor.id)")
             Text("Installed size counts source and compiled file contents, not allocated disk space.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -121,9 +132,16 @@ private struct ModuleSettingsRow: View {
 
     @ViewBuilder private var progress: some View {
         if let fraction = presentation.downloadFraction {
-            ProgressView(value: fraction)
-                .accessibilityLabel(L10n.text(presentation.status))
-                .accessibilityIdentifier("moduleProgress-\(descriptor.id)")
+            HStack {
+                ProgressView(value: fraction)
+                    .accessibilityLabel(L10n.text(presentation.status))
+                    .accessibilityIdentifier("moduleProgress-\(descriptor.id)")
+                if let percent = presentation.downloadPercent {
+                    Text(L10n.format("%lld%%", Int64(percent)))
+                        .monospacedDigit()
+                        .accessibilityIdentifier("moduleDownloadPercent-\(descriptor.id)")
+                }
+            }
         } else {
             ProgressView().controlSize(.small)
                 .accessibilityLabel(L10n.text(presentation.status))
@@ -131,16 +149,17 @@ private struct ModuleSettingsRow: View {
         }
         if state.phase == .downloading {
             if let total = state.totalBytes, total > 0 {
-                Text(L10n.format("%@ of %@", byteCount(state.receivedBytes), byteCount(total)))
+                Text(L10n.format("%@ of %@", moduleByteCount(state.receivedBytes), moduleByteCount(total)))
                     .font(.caption).monospacedDigit()
             } else {
-                Text(L10n.format("%@ received", byteCount(state.receivedBytes)))
+                Text(L10n.format("%@ received", moduleByteCount(state.receivedBytes)))
                     .font(.caption).monospacedDigit()
             }
         }
     }
 
-    private func byteCount(_ bytes: Int64) -> String {
-        L10n.format("%@ (%lld bytes)", ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file), bytes)
-    }
+}
+
+private func moduleByteCount(_ bytes: Int64) -> String {
+    L10n.format("%@ (%lld bytes)", ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file), bytes)
 }

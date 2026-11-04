@@ -1670,3 +1670,8 @@
 "Depth extraction requires an available depth model." = "Depth extraction requires an available depth model.";
 "Depth estimation for Volumetric Light and depth map extraction" = "Depth estimation for Volumetric Light and depth map extraction";
 "The depth model could not produce a depth map for this image." = "The depth model could not produce a depth map for this image.";
+"Show in Finder" = "Show in Finder";
+"Total installed size" = "Total installed size";
+"If the module folder does not exist yet, Finder shows its nearest existing parent." = "If the module folder does not exist yet, Finder shows its nearest existing parent.";
+"Total counts installed module content, including disabled modules." = "Total counts installed module content, including disabled modules.";
+"%lld%%" = "%lld%%";

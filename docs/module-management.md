@@ -6,11 +6,11 @@ Open **Compositor → Settings… → Plug-ins & Modules**, or **Manage Modules�
 
 The built-in `depth-mini` descriptor pins `depth-model-1` from [the upstream release](https://github.com/robbietilton/Compositor/releases/tag/depth-model-1). The three assets total **2,657,779 bytes**. Their names, package paths, exact sizes and SHA-256 pins live in `Compositor/Modules/ModuleCatalog.swift`. The source base is an asset-download directory, not a browsable release page; the settings page provides separate source/release and license links. DepthMini is distilled from Depth Anything V2 Small (Apache-2.0) and uses torchvision MobileNetV3 ImageNet weights (BSD-3-Clause); the app's MIT license does not replace those licenses.
 
-Download size is the pinned network payload. Installed size is the content byte count of retained source and compiled files, so it can differ from the download size and from filesystem allocated space. Download progress uses actual received bytes; a missing total is indeterminate. Verification, compilation, migration and runtime loading have separate indeterminate stages. A completed transfer alone is not an installed model.
+Download size is the pinned network payload. Installed size is the content byte count of retained source and compiled files, so it can differ from the download size and from filesystem allocated space. The header totals content bytes for installed catalog modules, including disabled modules; it does not count unrelated files, abandoned generations or temporary downloads. Download progress shows actual received bytes and a numeric percentage when the total is known; a missing total is indeterminate. Verification, compilation, migration and runtime loading have separate indeterminate stages. A completed transfer alone is not an installed model.
 
 ## Storage and provenance
 
-The root is the system-resolved Application Support URL plus `Compositor/Modules/`. Settings displays the actual path. A sandboxed build normally resolves inside `~/Library/Containers/com.wonderassembly.compositor/Data/Library/Application Support/`; an unsandboxed build uses the user's normal Application Support directory.
+The root is the system-resolved Application Support URL plus `Compositor/Modules/`. Settings displays the actual path and offers **Show in Finder**. If the root does not exist yet, Finder reveals the nearest existing parent without creating a directory. A sandboxed build normally resolves inside `~/Library/Containers/com.wonderassembly.compositor/Data/Library/Application Support/`; an unsandboxed build uses the user's normal Application Support directory.
 
 ```text
 Modules/

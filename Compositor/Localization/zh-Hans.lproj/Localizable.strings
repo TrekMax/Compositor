@@ -1670,3 +1670,8 @@
 "Depth extraction requires an available depth model." = "深度提取需要可用的深度模型。";
 "Depth estimation for Volumetric Light and depth map extraction" = "用于体积光和深度图提取的深度估计";
 "The depth model could not produce a depth map for this image." = "深度模型未能为此图像生成深度图。";
+"Show in Finder" = "在访达中显示";
+"Total installed size" = "已安装总大小";
+"If the module folder does not exist yet, Finder shows its nearest existing parent." = "如果模块文件夹尚不存在，访达会显示其最近的现有父文件夹。";
+"Total counts installed module content, including disabled modules." = "总大小统计已安装模块的内容，包括已禁用的模块。";
+"%lld%%" = "%lld%%";

@@ -17,6 +17,11 @@ nonisolated struct ModuleStorage: Sendable {
         let version: String
         let generation: String
         let compiledName: String
+        let packageName: String?
+        let hasSourcePackage: Bool
+        let catalogFingerprint: String
+        let source: URL
+        let installedAt: Date
         let bytes: Int64
         let provenance: ModuleState.Provenance
     }
@@ -90,17 +95,22 @@ nonisolated struct ModuleStorage: Sendable {
         guard FileManager.default.fileExists(atPath: receiptURL.path) else { return nil }
         let receipt = try JSONDecoder().decode(Receipt.self, from: Data(contentsOf: receiptURL))
         guard receipt.id == descriptor.id, receipt.version == descriptor.version,
-              receipt.compiledName == descriptor.compiledName, UUID(uuidString: receipt.generation) != nil, receipt.bytes >= 0 else {
+              receipt.compiledName == descriptor.compiledName, UUID(uuidString: receipt.generation) != nil, receipt.bytes >= 0,
+              receipt.catalogFingerprint == (try descriptor.catalogFingerprint()), receipt.source == descriptor.source,
+              receipt.hasSourcePackage == (receipt.provenance == .verifiedDownload),
+              receipt.packageName == (receipt.hasSourcePackage ? descriptor.packageName : nil) else {
             throw ModuleState.Issue(code: .verification, message: "The installed module receipt does not match this version.")
         }
         let compiled = try contained("generations/\(receipt.generation)/\(receipt.compiledName)", in: directory)
-        guard FileManager.default.fileExists(atPath: compiled.path) else {
-            throw ModuleState.Issue(code: .storage, message: "The installed model is missing.")
+        guard FileManager.default.fileExists(atPath: compiled.path) else { return nil }
+        if let packageName = receipt.packageName {
+            let package = try contained(packageName, in: compiled.deletingLastPathComponent())
+            for asset in descriptor.assets { try verify(asset, at: contained(asset.path, in: package)) }
         }
         return ModuleInstallation(compiledURL: compiled, bytes: receipt.bytes, provenance: receipt.provenance)
     }
 
-    func publish(_ compiled: URL, descriptor: ModuleDescriptor, provenance: ModuleState.Provenance) throws -> ModuleInstallation {
+    func publish(_ compiled: URL, package: URL? = nil, descriptor: ModuleDescriptor, provenance: ModuleState.Provenance) throws -> ModuleInstallation {
         try Task.checkCancellation()
         try validate(descriptor)
         let directory = try contained(descriptor.id, in: root)
@@ -108,13 +118,20 @@ nonisolated struct ModuleStorage: Sendable {
         let destination = try contained("generations/\(generation)", in: directory)
         let receiptURL = try contained("receipt.json", in: directory)
         let previous = try? inspect(descriptor)
-        let bytes = try diskBytes(at: compiled)
+        guard (package != nil) == (provenance == .verifiedDownload) else {
+            throw ModuleState.Issue(code: .verification, message: "Verified installations require their source package.")
+        }
+        let bytes = try diskBytes(at: compiled) + (package.map { try diskBytes(at: $0) } ?? 0)
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
         do {
             try FileManager.default.moveItem(at: compiled, to: destination.appendingPathComponent(descriptor.compiledName))
+            if let package { try FileManager.default.moveItem(at: package, to: destination.appendingPathComponent(descriptor.packageName)) }
             try Task.checkCancellation()
             let receipt = Receipt(id: descriptor.id, version: descriptor.version, generation: generation,
-                                  compiledName: descriptor.compiledName, bytes: bytes, provenance: provenance)
+                                  compiledName: descriptor.compiledName, packageName: package == nil ? nil : descriptor.packageName,
+                                  hasSourcePackage: package != nil,
+                                  catalogFingerprint: try descriptor.catalogFingerprint(), source: descriptor.source, installedAt: Date(),
+                                  bytes: bytes, provenance: provenance)
             try JSONEncoder().encode(receipt).write(to: receiptURL, options: .atomic)
         } catch {
             try? FileManager.default.removeItem(at: destination)

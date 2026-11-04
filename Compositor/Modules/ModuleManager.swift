@@ -16,6 +16,7 @@ import Observation
     @ObservationIgnored private var runtimes: [String: any ModuleRuntime]
     @ObservationIgnored private var operations: [String: Operation] = [:]
     @ObservationIgnored private var draining: [String: Task<Void, Never>] = [:]
+    @ObservationIgnored private var revocations: [String: UInt64] = [:]
 
     private struct Operation {
         let id: UUID
@@ -23,6 +24,8 @@ import Observation
         var activate: Bool
         let download: Bool
         var removing = false
+        var progressStage = -1
+        var progressBytes: Int64 = 0
     }
 
     init(descriptors: [ModuleDescriptor] = ModuleCatalog.all, root: URL = ModuleManager.defaultRoot,
@@ -127,7 +130,9 @@ import Observation
         guard let descriptor = descriptors.first(where: { $0.id == id }) else { return false }
         if var operation = operations[id] {
             if activate { operation.activate = true; operations[id] = operation }
+            let revision = revocations[id, default: 0]
             let result = await operation.task.value
+            guard revocations[id, default: 0] == revision, !Task.isCancelled else { return false }
             if download && !operation.download && !operation.removing && states[id]?.isInstalled != true {
                 return await run(id, download: true, activate: activate)
             }
@@ -148,27 +153,34 @@ import Observation
                 }
                 guard current(id, token) else { return false }
                 if installation == nil {
-                    do { installation = try await installer.migrate(descriptor) }
+                    do {
+                        installation = try await installer.migrate(descriptor) { progress in
+                            await self.accept(progress, for: id, operation: token)
+                        }
+                    }
                     catch { if !download || activate { throw error } }
                 }
                 guard current(id, token) else { return false }
                 if installation == nil, download {
                     states[id]?.phase = .downloading
                     states[id]?.receivedBytes = 0
-                    states[id]?.totalBytes = nil
+                    states[id]?.totalBytes = descriptor.downloadBytes
+                    operations[id]?.progressStage = 1
+                    operations[id]?.progressBytes = 0
                     installation = try await installer.install(descriptor) { progress in
-                        Task { @MainActor [self] in
-                            guard self.current(id, token), [.downloading, .verifying, .compiling].contains(self.states[id]?.phase) else { return }
-                            self.states[id]?.phase = progress.phase
-                            self.states[id]?.receivedBytes = progress.receivedBytes
-                            self.states[id]?.totalBytes = progress.totalBytes
-                        }
+                        await self.accept(progress, for: id, operation: token)
                     }
                 }
                 guard current(id, token) else { return false }
                 guard let installation else {
-                    let phase: ModuleState.Phase = states[id]?.isEnabled == true ? .notInstalled : .disabled
-                    states[id]?.phase = phase
+                    runtimes[id]?.invalidate()
+                    await runtimes[id]?.unload()
+                    guard current(id, token) else { return false }
+                    var state = ModuleState()
+                    state.isEnabled = states[id]?.isEnabled ?? true
+                    if !state.isEnabled { state.phase = .disabled }
+                    states[id] = state
+                    availabilityRevision &+= 1
                     operations[id] = nil
                     return false
                 }
@@ -208,11 +220,32 @@ import Observation
         return activate ? result && runtimes[id]?.isReady == true : result
     }
 
+    private func accept(_ progress: ModuleProgress, for id: String, operation token: UUID) {
+        guard current(id, token), states[id]?.phase != .loading else { return }
+        let stage: Int
+        switch progress.phase {
+        case .migrating: stage = 0
+        case .downloading: stage = 1
+        case .verifying: stage = 2
+        case .compiling: stage = 3
+        default: return
+        }
+        guard var operation = operations[id], stage >= operation.progressStage,
+              progress.receivedBytes >= operation.progressBytes else { return }
+        operation.progressStage = stage
+        operation.progressBytes = progress.receivedBytes
+        operations[id] = operation
+        states[id]?.phase = progress.phase
+        states[id]?.receivedBytes = progress.receivedBytes
+        states[id]?.totalBytes = progress.totalBytes
+    }
+
     private func current(_ id: String, _ token: UUID) -> Bool {
         operations[id]?.id == token && !Task.isCancelled
     }
 
     private func stop(_ id: String) {
+        revocations[id, default: 0] &+= 1
         let wasLoading = states[id]?.phase == .loading
         let operation = operations.removeValue(forKey: id)
         operation?.task.cancel()

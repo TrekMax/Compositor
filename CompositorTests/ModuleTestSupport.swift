@@ -7,7 +7,7 @@ nonisolated final class ModuleFixture: @unchecked Sendable {
     var defaults: UserDefaults { UserDefaults(suiteName: suite)! }
     var descriptor: ModuleDescriptor {
         ModuleDescriptor(id: "tiny", name: "Tiny", summary: "Fixture", version: "1", source: URL(string: "https://example.invalid/")!,
-                         assets: [.init(name: "weight.bin", path: "Data/weight.bin", bytes: 3, sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")],
+                         publisher: "Fixture", homepage: URL(string: "https://example.invalid/")!, releasePage: URL(string: "https://example.invalid/release")!, attributions: [], assets: [.init(name: "weight.bin", path: "Data/weight.bin", bytes: 3, sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")],
                          capability: "depth", packageName: "Tiny.mlpackage", compiledName: "Tiny.mlmodelc", legacyPath: "Legacy/Tiny.mlmodelc", inputName: "image", outputName: "depth")
     }
     deinit {
@@ -46,19 +46,24 @@ nonisolated final class FixtureInstaller: ModuleInstalling, @unchecked Sendable 
     let root: URL
     var held: CheckedContinuation<Void, Never>?
     var holdNext = false
+    private var holdInspect = false
+    let inspection = ModuleGate()
+    func holdNextInspection() { lock.withLock { holdInspect = true } }
     var isHeld: Bool { lock.withLock { held != nil } }
     init(root: URL) { self.root = root }
     func hold() { lock.withLock { holdNext = true } }
     func release() { let continuation = lock.withLock { let c = held; held = nil; return c }; continuation?.resume() }
     func inspect(_ descriptor: ModuleDescriptor) async throws -> ModuleInstallation? {
+        let shouldHold = lock.withLock { let value = holdInspect; holdInspect = false; return value }
+        if shouldHold { await inspection.wait() }
         let url = root.appendingPathComponent("model")
         return FileManager.default.fileExists(atPath: url.path) ? ModuleInstallation(compiledURL: url, bytes: 3, provenance: .verifiedDownload) : nil
     }
-    func migrate(_ descriptor: ModuleDescriptor) async throws -> ModuleInstallation? { nil }
-    func install(_ descriptor: ModuleDescriptor, progress: @escaping @Sendable (ModuleProgress) -> Void) async throws -> ModuleInstallation {
+    func migrate(_ descriptor: ModuleDescriptor, progress: @escaping @Sendable (ModuleProgress) async -> Void) async throws -> ModuleInstallation? { nil }
+    func install(_ descriptor: ModuleDescriptor, progress: @escaping @Sendable (ModuleProgress) async -> Void) async throws -> ModuleInstallation {
         let shouldHold = lock.withLock { let value = holdNext; holdNext = false; return value }
         if shouldHold { await withCheckedContinuation { continuation in lock.withLock { held = continuation } } }
-        progress(ModuleProgress(phase: .downloading, receivedBytes: 3, totalBytes: nil))
+        await progress(ModuleProgress(phase: .downloading, receivedBytes: 3, totalBytes: nil))
         try Task.checkCancellation()
         let url = root.appendingPathComponent("model")
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
@@ -137,4 +142,31 @@ nonisolated final class FailingModuleRuntime: ModuleRuntime, @unchecked Sendable
         lock.withLock { ready = true }
         throw CocoaError(.fileReadCorruptFile)
     }
+}
+
+nonisolated final class ModuleProgressObservations: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: [ModuleProgress] = []
+    func append(_ value: ModuleProgress) { lock.withLock { stored.append(value) } }
+    var values: [ModuleProgress] { lock.withLock { stored } }
+}
+
+nonisolated final class ReorderedProgressInstaller: ModuleInstalling, @unchecked Sendable {
+    let fixture: FixtureInstaller
+    let gate = ModuleGate()
+    private let lock = NSLock()
+    private var callback: (@Sendable (ModuleProgress) async -> Void)?
+    init(root: URL) { fixture = FixtureInstaller(root: root) }
+    func inspect(_ descriptor: ModuleDescriptor) async throws -> ModuleInstallation? { try await fixture.inspect(descriptor) }
+    func migrate(_ descriptor: ModuleDescriptor, progress: @escaping @Sendable (ModuleProgress) async -> Void) async throws -> ModuleInstallation? { nil }
+    func install(_ descriptor: ModuleDescriptor, progress: @escaping @Sendable (ModuleProgress) async -> Void) async throws -> ModuleInstallation {
+        lock.withLock { callback = progress }
+        await gate.wait()
+        return try await fixture.install(descriptor, progress: progress)
+    }
+    func emit(_ progress: ModuleProgress) async {
+        let callback = lock.withLock { self.callback }
+        await callback?(progress)
+    }
+    func remove(_ descriptor: ModuleDescriptor) async throws { try await fixture.remove(descriptor) }
 }

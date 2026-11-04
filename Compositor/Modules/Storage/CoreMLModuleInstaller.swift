@@ -15,9 +15,15 @@ nonisolated struct ModuleProgress: Sendable {
 
 nonisolated protocol ModuleInstalling: Sendable {
     func inspect(_ descriptor: ModuleDescriptor) async throws -> ModuleInstallation?
-    func migrate(_ descriptor: ModuleDescriptor) async throws -> ModuleInstallation?
-    func install(_ descriptor: ModuleDescriptor, progress: @escaping @Sendable (ModuleProgress) -> Void) async throws -> ModuleInstallation
+    func migrate(_ descriptor: ModuleDescriptor, progress: @escaping @Sendable (ModuleProgress) async -> Void) async throws -> ModuleInstallation?
+    func install(_ descriptor: ModuleDescriptor, progress: @escaping @Sendable (ModuleProgress) async -> Void) async throws -> ModuleInstallation
     func remove(_ descriptor: ModuleDescriptor) async throws
+}
+
+nonisolated extension ModuleInstalling {
+    func migrate(_ descriptor: ModuleDescriptor) async throws -> ModuleInstallation? {
+        try await migrate(descriptor) { _ in }
+    }
 }
 
 nonisolated struct CoreMLModuleInstaller: ModuleInstalling {
@@ -44,11 +50,12 @@ nonisolated struct CoreMLModuleInstaller: ModuleInstalling {
         return installation
     }
 
-    @concurrent func migrate(_ descriptor: ModuleDescriptor) async throws -> ModuleInstallation? {
+    @concurrent func migrate(_ descriptor: ModuleDescriptor, progress: @escaping @Sendable (ModuleProgress) async -> Void) async throws -> ModuleInstallation? {
         try storage.validate(descriptor)
         guard let path = descriptor.legacyPath else { return nil }
         let legacy = try storage.contained(path, in: legacyBase)
         guard FileManager.default.fileExists(atPath: legacy.path) else { return nil }
+        await progress(ModuleProgress(phase: .migrating, totalBytes: nil))
         let operation = try storage.begin()
         defer { storage.finish(operation) }
         do {
@@ -64,7 +71,7 @@ nonisolated struct CoreMLModuleInstaller: ModuleInstalling {
         catch { throw ModuleState.Issue(code: .migration, message: error.localizedDescription) }
     }
 
-    @concurrent func install(_ descriptor: ModuleDescriptor, progress: @escaping @Sendable (ModuleProgress) -> Void) async throws -> ModuleInstallation {
+    @concurrent func install(_ descriptor: ModuleDescriptor, progress: @escaping @Sendable (ModuleProgress) async -> Void) async throws -> ModuleInstallation {
         try storage.validate(descriptor)
         let operation = try storage.begin()
         defer { storage.finish(operation) }
@@ -77,19 +84,32 @@ nonisolated struct CoreMLModuleInstaller: ModuleInstalling {
             try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
             let previous = completed
             let aggregate = descriptor.downloadBytes
-            try await transport.download(asset, from: descriptor.source.appendingPathComponent(asset.name), to: destination) { value in
-                progress(ModuleProgress(phase: .downloading, receivedBytes: previous + value.receivedBytes,
-                                        totalBytes: value.totalBytes == nil ? nil : aggregate))
+            let updates = AsyncStream<ModuleDownloadProgress>.makeStream(bufferingPolicy: .bufferingNewest(1))
+            let reporting = Task {
+                for await value in updates.stream {
+                    await progress(ModuleProgress(phase: .downloading, receivedBytes: previous + value.receivedBytes, totalBytes: aggregate))
+                }
             }
+            do {
+                try await transport.download(asset, from: descriptor.source.appendingPathComponent(asset.name), to: destination) {
+                    updates.continuation.yield($0)
+                }
+            } catch {
+                updates.continuation.finish()
+                await reporting.value
+                throw error
+            }
+            updates.continuation.finish()
+            await reporting.value
             completed += asset.bytes
         }
         try Task.checkCancellation()
-        progress(ModuleProgress(phase: .verifying, receivedBytes: completed, totalBytes: descriptor.downloadBytes))
+        await progress(ModuleProgress(phase: .verifying, receivedBytes: completed, totalBytes: nil))
         for asset in descriptor.assets {
             try Task.checkCancellation()
             try storage.verify(asset, at: storage.contained(asset.path, in: package))
         }
-        progress(ModuleProgress(phase: .compiling, receivedBytes: completed, totalBytes: descriptor.downloadBytes))
+        await progress(ModuleProgress(phase: .compiling, receivedBytes: completed, totalBytes: nil))
         let built: URL
         do { built = try await compile(package) }
         catch { throw ModuleState.Issue(code: .compilation, message: error.localizedDescription) }
@@ -97,7 +117,7 @@ nonisolated struct CoreMLModuleInstaller: ModuleInstalling {
         try Task.checkCancellation()
         try await validate(built, descriptor)
         try Task.checkCancellation()
-        return try storage.publish(built, descriptor: descriptor, provenance: .verifiedDownload)
+        return try storage.publish(built, package: package, descriptor: descriptor, provenance: .verifiedDownload)
     }
 
     @concurrent func remove(_ descriptor: ModuleDescriptor) async throws { try storage.remove(descriptor) }

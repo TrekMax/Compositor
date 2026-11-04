@@ -1,7 +1,7 @@
 import Foundation
 
 nonisolated struct ModuleState: Sendable, Equatable {
-    enum Phase: String, Sendable { case notInstalled, downloading, verifying, compiling, installed, loading, ready, disabled, removing, failed, cancelled }
+    enum Phase: String, Sendable { case notInstalled, migrating, downloading, verifying, compiling, installed, loading, ready, disabled, removing, failed, cancelled }
     enum Provenance: String, Codable, Sendable { case verifiedDownload, migratedCompiledCache }
     struct Issue: Error, Sendable, Equatable {
         enum Code: String, Sendable { case invalidDescriptor, network, verification, compilation, storage, runtime, migration }

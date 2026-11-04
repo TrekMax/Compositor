@@ -14,7 +14,7 @@ struct ModuleStorageTests {
 
     @Test func rejectsTraversalBeforeCreatingRoot() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let descriptor = ModuleDescriptor(id: "../outside", name: "Bad", summary: "", version: "1", source: URL(string: "https://example.invalid/")!, assets: [], capability: "depth", packageName: "a.mlpackage", compiledName: "a.mlmodelc", legacyPath: nil, inputName: "image", outputName: "depth")
+        let descriptor = ModuleDescriptor(id: "../outside", name: "Bad", summary: "", version: "1", source: URL(string: "https://example.invalid/")!, publisher: "Fixture", homepage: URL(string: "https://example.invalid/")!, releasePage: URL(string: "https://example.invalid/release")!, attributions: [], assets: [], capability: "depth", packageName: "a.mlpackage", compiledName: "a.mlmodelc", legacyPath: nil, inputName: "image", outputName: "depth")
         #expect(throws: (any Error).self) { try ModuleStorage(root: root).validate(descriptor) }
         #expect(!FileManager.default.fileExists(atPath: root.path))
     }
@@ -31,7 +31,7 @@ extension ModuleStorageTests {
         await #expect(throws: (any Error).self) { try await broken.install(fixture.descriptor) { _ in } }
         let reopened = try #require(try await fixtureCoreInstaller(fixture).inspect(fixture.descriptor))
         #expect(reopened.compiledURL == installed.compiledURL)
-        #expect(reopened.bytes == 8)
+        #expect(reopened.bytes == 11)
     }
 
     @Test func migrationCopiesValidatesAndRetainsHonestProvenance() async throws {
@@ -42,6 +42,12 @@ extension ModuleStorageTests {
         let installer = fixtureCoreInstaller(fixture)
         let migrated = try #require(try await installer.migrate(fixture.descriptor))
         #expect(migrated.provenance == .migratedCompiledCache)
+        #expect(migrated.bytes == 3)
+        #expect(!FileManager.default.fileExists(atPath: migrated.compiledURL.deletingLastPathComponent().appendingPathComponent("Tiny.mlpackage").path))
+        let receipt = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: installer.storage.root.appendingPathComponent("tiny/receipt.json"))) as? [String: Any])
+        #expect(receipt["packageName"] == nil)
+        #expect(receipt["hasSourcePackage"] as? Bool == false)
+        #expect(receipt["provenance"] as? String == "migratedCompiledCache")
         #expect(try Data(contentsOf: migrated.compiledURL.appendingPathComponent("model")) == Data("old".utf8))
         #expect(!FileManager.default.fileExists(atPath: legacy.path))
         #expect(try await installer.inspect(fixture.descriptor)?.provenance == .migratedCompiledCache)
@@ -112,5 +118,43 @@ extension ModuleStorageTests {
         #expect(FileManager.default.fileExists(atPath: active.path))
         #expect(!FileManager.default.fileExists(atPath: abandoned.path))
         #expect(FileManager.default.fileExists(atPath: unrelated.path))
+    }
+}
+
+extension ModuleStorageTests {
+    @Test func catalogIncludesPublisherAndSeparateModelAttribution() {
+        let descriptor = ModuleCatalog.depthMini
+        #expect(descriptor.publisher == "Robbie Tilton")
+        #expect(descriptor.homepage.absoluteString == "https://github.com/robbietilton/Compositor")
+        #expect(descriptor.releasePage.absoluteString == "https://github.com/robbietilton/Compositor/releases/tag/depth-model-1")
+        #expect(descriptor.attributions.map(\.license) == ["Apache-2.0", "BSD-3-Clause"])
+        #expect(descriptor.attributions.allSatisfy { $0.homepage.scheme == "https" && $0.licenseURL.scheme == "https" })
+    }
+
+    @Test func retainedSourceReceiptIdentityAndChangedPins() async throws {
+        let fixture = ModuleFixture(), installer = fixtureCoreInstaller(fixture)
+        let before = Date()
+        let installed = try await installer.install(fixture.descriptor) { _ in }
+        let generation = installed.compiledURL.deletingLastPathComponent()
+        #expect(FileManager.default.fileExists(atPath: generation.appendingPathComponent("Tiny.mlpackage/Data/weight.bin").path))
+        #expect(installed.bytes == 11)
+        let receiptURL = installer.storage.root.appendingPathComponent("tiny/receipt.json")
+        let object = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: receiptURL)) as? [String: Any])
+        #expect((object["catalogFingerprint"] as? String)?.count == 64)
+        #expect(object["source"] as? String == "https://example.invalid/")
+        #expect(object["packageName"] as? String == "Tiny.mlpackage")
+        #expect(object["hasSourcePackage"] as? Bool == true)
+        let timestamp = object["installedAt"] as? Double
+        #expect(timestamp != nil)
+        if let timestamp { #expect(Date(timeIntervalSinceReferenceDate: timestamp) >= before) }
+        #expect(try await fixtureCoreInstaller(fixture).inspect(fixture.descriptor)?.bytes == 11)
+        let old = fixture.descriptor
+        let changed = ModuleDescriptor(id: old.id, name: old.name, summary: old.summary, version: old.version, source: old.source,
+                                       publisher: old.publisher, homepage: old.homepage, releasePage: old.releasePage, attributions: old.attributions,
+                                       assets: [.init(name: "weight.bin", path: "Data/weight.bin", bytes: 3, sha256: String(repeating: "0", count: 64))],
+                                       capability: old.capability, packageName: old.packageName, compiledName: old.compiledName, legacyPath: old.legacyPath,
+                                       inputName: old.inputName, outputName: old.outputName)
+        await #expect(throws: (any Error).self) { try await installer.inspect(changed) }
+        #expect(try await installer.inspect(old)?.compiledURL == installed.compiledURL)
     }
 }

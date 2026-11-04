@@ -78,3 +78,22 @@ extension ModuleDownloaderTests {
         #expect(!FileManager.default.fileExists(atPath: destination.path))
     }
 }
+
+extension ModuleDownloaderTests {
+    @Test func installerRetainsPinnedAggregateForUnknownResponseLength() async throws {
+        let fixture = ModuleFixture(), normal = fixtureCoreInstaller(fixture), observations = ModuleProgressObservations()
+        // URLProtocol uses the asset name to omit Content-Length for this pinned transfer.
+        let old = fixture.descriptor
+        let descriptor = ModuleDescriptor(id: old.id, name: old.name, summary: old.summary, version: old.version, source: old.source,
+                                          publisher: old.publisher, homepage: old.homepage, releasePage: old.releasePage, attributions: old.attributions,
+                                          assets: [.init(name: "unknown", path: "Data/weight.bin", bytes: 3, sha256: old.assets[0].sha256)],
+                                          capability: old.capability, packageName: old.packageName, compiledName: old.compiledName, legacyPath: nil,
+                                          inputName: old.inputName, outputName: old.outputName)
+        let installer = CoreMLModuleInstaller(root: normal.storage.root, legacyBase: fixture.root, transport: downloader(), compile: normal.compile, validate: normal.validate)
+        _ = try await installer.install(descriptor) { observations.append($0) }
+        let downloading = observations.values.filter { $0.phase == .downloading }
+        #expect(!downloading.isEmpty)
+        #expect(downloading.allSatisfy { $0.totalBytes == 3 })
+        #expect(downloading.last?.receivedBytes == 3)
+    }
+}
